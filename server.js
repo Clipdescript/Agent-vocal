@@ -24,21 +24,11 @@ const io = new Server(server, {
         origin: "*",
         methods: ["GET", "POST"]
     },
-    allowEIO3: true // Pour la compatibilité au cas où
+    allowEIO3: true
 });
 
-// Servir les fichiers statiques AVANT les autres routes
+// Servir les fichiers statiques
 const publicPath = path.join(__dirname, 'public');
-console.log(`Static files path: ${publicPath}`);
-
-const fs = require('fs');
-if (fs.existsSync(publicPath)) {
-    console.log('Public directory exists');
-    console.log('Contents:', fs.readdirSync(publicPath));
-} else {
-    console.error('Public directory NOT FOUND!');
-}
-
 app.use(express.static(publicPath));
 
 app.get('/health', (req, res) => {
@@ -84,15 +74,12 @@ io.on('connection', (socket) => {
     });
 
     socket.on('chat message', (msg) => {
-        // S'assurer qu'il y a un timestamp pour la persistence locale
         if (!msg.timestamp) msg.timestamp = Date.now();
         
-        // Sauvegarder dans la base de données
         const stmt = db.prepare("INSERT INTO messages (id, username, text, time, timestamp, color, image, userId, bio, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         stmt.run(msg.id, msg.username, msg.text, msg.time, msg.timestamp, msg.color, msg.image, msg.userId, msg.bio, msg.status);
         stmt.finalize();
 
-        // On renvoie l'objet message tel quel (contient .text, .id, .timestamp, .image)
         io.emit('chat message', msg);
     });
 
@@ -105,11 +92,9 @@ io.on('connection', (socket) => {
     });
 
     socket.on('update profile', (data) => {
-        // Mettre à jour tous les messages de cet utilisateur dans la base de données
         const stmt = db.prepare("UPDATE messages SET image = ?, userId = ?, bio = ?, status = ? WHERE userId = ? OR username = ?");
         stmt.run(data.image, data.userId, data.bio, data.status, data.userId, data.username, (err) => {
             if (!err) {
-                // Notifier tous les clients pour qu'ils mettent à jour l'affichage
                 io.emit('profile updated', data);
             }
         });
@@ -117,7 +102,6 @@ io.on('connection', (socket) => {
     });
 
     socket.on('get user profile', (uid) => {
-        // On récupère les infos depuis le message le plus récent de cet utilisateur
         db.get("SELECT username, image, bio, status, userId FROM messages WHERE userId = ? ORDER BY timestamp DESC LIMIT 1", [uid], (err, row) => {
             if (!err && row) {
                 socket.emit('user profile data', row);
@@ -129,9 +113,7 @@ io.on('connection', (socket) => {
 
     socket.on('clear messages', () => {
         db.run("DELETE FROM messages", (err) => {
-            if (err) {
-                console.error('Erreur lors de la suppression des messages:', err);
-            } else {
+            if (!err) {
                 io.emit('messages cleared');
             }
         });
@@ -142,9 +124,7 @@ io.on('connection', (socket) => {
     });
 });
 
-// Gestionnaire 404 pour déboguer les fichiers manquants
 app.use((req, res) => {
-    console.warn(`404 - Not Found: ${req.url}`);
     res.status(404).send(`La ressource demandée n'existe pas : ${req.url}`);
 });
 
