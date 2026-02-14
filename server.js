@@ -46,8 +46,8 @@ app.get('/health', (req, res) => {
 
 // Initialisation de la base de données PostgreSQL (Supabase)
 const pool = new Pool({
-    // Utilisation de l'hôte IPv4 via l'option pgbouncer=true ou en utilisant l'adresse directe
-    connectionString: process.env.DATABASE_URL || 'postgresql://postgres:L9QUOo7LEK0IFzjq@db.ptuisotxdbcltnfduzsx.supabase.co:5432/postgres?sslmode=require',
+    // Utilisation de l'IP directe IPv4 pour contourner l'erreur ENETUNREACH sur Render
+    connectionString: process.env.DATABASE_URL || 'postgresql://postgres:L9QUOo7LEK0IFzjq@15.236.143.208:5432/postgres',
     ssl: {
         rejectUnauthorized: false
     }
