@@ -139,10 +139,43 @@ socket.on('user stop typing', () => {
     typingIndicator.innerHTML = '';
 });
 
+// Gestion des images dans les messages
+const imgBtn = document.getElementById('img-btn');
+const messageImageInput = document.getElementById('message-image-input');
+const imagePreviewContainer = document.getElementById('image-preview-container');
+const imagePreview = document.getElementById('image-preview');
+const removeImageBtn = document.getElementById('remove-image-btn');
+
+let selectedMessageImage = null;
+
+imgBtn.addEventListener('click', () => {
+    messageImageInput.click();
+});
+
+messageImageInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            selectedMessageImage = event.target.result;
+            imagePreview.src = selectedMessageImage;
+            imagePreviewContainer.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+removeImageBtn.addEventListener('click', () => {
+    selectedMessageImage = null;
+    imagePreview.src = '';
+    imagePreviewContainer.style.display = 'none';
+    messageImageInput.value = '';
+});
+
 form.addEventListener('submit', function(e) {
     e.preventDefault();
-    if (input.value.trim() && currentUsername) {
-        socket.emit('stop typing'); // Force l'arrêt au moment de l'envoi
+    if ((input.value.trim() || selectedMessageImage) && currentUsername) {
+        socket.emit('stop typing'); 
         const now = new Date();
         const time = now.getHours().toString().padStart(2, '0') + ':' + 
                      now.getMinutes().toString().padStart(2, '0');
@@ -156,11 +189,18 @@ form.addEventListener('submit', function(e) {
             userId: userId,
             color: userColor,
             image: userImage,
+            messageImage: selectedMessageImage, // Image jointe au message
             bio: localStorage.getItem('chat-user-bio') || "Bonjour ! J'utilise Messagerie instantanée.",
             status: localStorage.getItem('chat-user-status') || ""
         };
         socket.emit('chat message', msg);
         input.value = '';
+        
+        // Réinitialiser l'image après envoi
+        selectedMessageImage = null;
+        imagePreview.src = '';
+        imagePreviewContainer.style.display = 'none';
+        messageImageInput.value = '';
     }
 });
 
@@ -295,9 +335,28 @@ function addMessage(msg, shouldVibrate = true) {
     textSpan.textContent = msg.text;
     textSpan.className = 'text';
 
+    if (!msg.text) {
+        textSpan.style.display = 'none';
+    }
+
     if (msg.isVisio) {
         contentDiv.classList.add('visio-message');
         textSpan.innerHTML = `<strong>${msg.text}</strong><br><a href="/visio.html?room=${msg.roomId}" class="visio-link">REJOINDRE LA VISIO</a>`;
+        textSpan.style.display = 'block';
+    }
+    
+    contentDiv.appendChild(textSpan);
+
+    if (msg.messageImage) {
+        const msgImg = document.createElement('img');
+        msgImg.src = msg.messageImage;
+        msgImg.className = 'message-img';
+        msgImg.addEventListener('click', () => {
+            // Ouvrir l'image en grand dans un nouvel onglet
+            const win = window.open();
+            win.document.write(`<img src="${msg.messageImage}" style="max-width:100%; height:auto;">`);
+        });
+        contentDiv.appendChild(msgImg);
     }
     
     const timeSpan = document.createElement('span');

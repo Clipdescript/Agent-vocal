@@ -35,12 +35,18 @@
     <ul id="messages"></ul>
     <div id="typing-indicator"></div>
     <form id="form" action="">
+        <div id="image-preview-container">
+            <img id="image-preview" src="" alt="Aperçu">
+            <button id="remove-image-btn" type="button">&times;</button>
+        </div>
         <div id="input-container">
             <input id="input" autocomplete="off" placeholder="Message..." />
+            <button id="img-btn" type="button"><i data-lucide="image"></i></button>
             <button id="mic-btn" type="button"><i data-lucide="mic"></i></button>
         </div>
         <button id="send"><i data-lucide="send-horizontal"></i></button>
     </form>
+    <input type="file" id="message-image-input" accept="image/*" style="display: none;">
 
     <div id="confirm-modal" class="modal-overlay">
         <div class="modal-box">
