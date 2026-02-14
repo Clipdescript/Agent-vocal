@@ -4,8 +4,9 @@ lucide.createIcons();
 const form = document.getElementById('form');
 const input = document.getElementById('input');
 const messages = document.getElementById('messages');
+const typingIndicator = document.getElementById('typing-indicator');
 
-// Dictation vocale
+// Logic for Speech Recognition
 const micBtn = document.getElementById('mic-btn');
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -23,87 +24,47 @@ if (SpeechRecognition) {
         }
     });
 
-    recognition.onstart = () => {
-        micBtn.classList.add('recording');
-    };
-
-    recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        input.value += transcript;
-    };
-
-    recognition.onerror = (event) => {
-        console.error('Erreur reconnaissance vocale:', event.error);
-        micBtn.classList.remove('recording');
-    };
-
-    recognition.onend = () => {
-        micBtn.classList.remove('recording');
-    };
+    recognition.onstart = () => micBtn.classList.add('recording');
+    recognition.onresult = (event) => { input.value += event.results[0][0].transcript; };
+    recognition.onerror = () => micBtn.classList.remove('recording');
+    recognition.onend = () => micBtn.classList.remove('recording');
 } else {
-    micBtn.style.display = 'none'; // Cacher si pas supporté
+    micBtn.style.display = 'none';
 }
 
-// Gestion du Pseudo et de l'Avatar
+// User Profile & Storage
 const overlay = document.getElementById('username-overlay');
 const usernameInput = document.getElementById('username-input');
 const usernameSubmit = document.getElementById('username-submit');
 const profileAvatar = document.getElementById('profile-avatar');
 
 let currentUsername = localStorage.getItem('chat-username');
-let userColor = localStorage.getItem('chat-user-color');
 let userImage = localStorage.getItem('chat-user-image');
-let userId = localStorage.getItem('chat-user-id');
+let userId = localStorage.getItem('chat-user-id') || 'user_' + Math.random().toString(36).substr(2, 9);
+localStorage.setItem('chat-user-id', userId);
 
-if (!userId) {
-    userId = 'user_' + Math.random().toString(36).substr(2, 9);
-    localStorage.setItem('chat-user-id', userId);
-}
-
-const softColors = [
-    '#3498db', '#2ecc71', '#e74c3c', '#9b59b6', '#1abc9c', 
-    '#e67e22', '#3f51b5', '#e91e63', '#00bcd4', '#27ae60', 
-    '#2980b9', '#8e44ad', '#d35400', '#c0392b', '#16a085'
-];
-
-// Fonction pour générer une couleur stable basée sur le pseudo
+const softColors = ['#3498db', '#2ecc71', '#e74c3c', '#9b59b6', '#1abc9c', '#e67e22', '#3f51b5', '#e91e63', '#00bcd4', '#27ae60'];
 function getColorForUser(username) {
-    if (!username) return softColors[0];
     let hash = 0;
-    for (let i = 0; i < username.length; i++) {
-        hash = username.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const index = Math.abs(hash) % softColors.length;
-    return softColors[index];
+    for (let i = 0; i < (username || "").length; i++) hash = username.charCodeAt(i) + ((hash << 5) - hash);
+    return softColors[Math.abs(hash) % softColors.length];
 }
 
-function updateAvatar() {
-    if (currentUsername) {
-        userColor = getColorForUser(currentUsername);
-        localStorage.setItem('chat-user-color', userColor);
-        
-        if (userImage) {
-            profileAvatar.innerHTML = `<img src="${userImage}" alt="Profil">`;
-            profileAvatar.style.backgroundColor = 'transparent';
-        } else {
-            profileAvatar.textContent = currentUsername.charAt(0).toUpperCase();
-            profileAvatar.style.backgroundColor = userColor;
-            profileAvatar.style.color = 'white';
-        }
-        // Informer le serveur du changement pour mettre à jour l'historique
-        socket.emit('update profile', { 
-            username: currentUsername, 
-            image: userImage, 
-            userId: userId,
-            bio: localStorage.getItem('chat-user-bio') || "Bonjour ! J'utilise Messagerie instantanée.",
-            status: localStorage.getItem('chat-user-status') || ""
-        });
+function updateHeaderAvatar() {
+    if (!currentUsername) return;
+    if (userImage) {
+        profileAvatar.innerHTML = `<img src="${userImage}">`;
+        profileAvatar.style.backgroundColor = 'transparent';
+    } else {
+        profileAvatar.textContent = currentUsername.charAt(0).toUpperCase();
+        profileAvatar.style.backgroundColor = getColorForUser(currentUsername);
+        profileAvatar.style.color = 'white';
     }
 }
 
 if (currentUsername) {
     overlay.style.display = 'none';
-    updateAvatar();
+    updateHeaderAvatar();
 }
 
 usernameSubmit.addEventListener('click', () => {
@@ -112,338 +73,204 @@ usernameSubmit.addEventListener('click', () => {
         currentUsername = name;
         localStorage.setItem('chat-username', name);
         overlay.style.display = 'none';
-        updateAvatar();
+        updateHeaderAvatar();
+        socket.emit('update profile', { username: currentUsername, userId: userId });
     }
 });
 
-// Gestion de l'indicateur d'écriture
-const typingIndicator = document.getElementById('typing-indicator');
+// Typing Indicator logic
 let typingTimeout;
-
 input.addEventListener('input', () => {
     if (currentUsername) {
         socket.emit('typing', currentUsername);
-        
         clearTimeout(typingTimeout);
-        typingTimeout = setTimeout(() => {
-            socket.emit('stop typing');
-        }, 2000); // S'arrête après 2 secondes sans taper
+        typingTimeout = setTimeout(() => socket.emit('stop typing'), 2000);
     }
 });
 
-socket.on('user typing', (username) => {
-    typingIndicator.innerHTML = `<span>${username} écrit</span><div class="typing-dots"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
-});
+socket.on('user typing', (user) => { typingIndicator.textContent = `${user} écrit...`; });
+socket.on('user stop typing', () => { typingIndicator.textContent = ''; });
 
-socket.on('user stop typing', () => {
-    typingIndicator.innerHTML = '';
-});
-
-// Gestion des images dans les messages
+// Image Selection & Preview
 const imgBtn = document.getElementById('img-btn');
 const messageImageInput = document.getElementById('message-image-input');
-const imagePreviewContainer = document.getElementById('image-preview-container');
-const imagePreview = document.getElementById('image-preview');
-const removeImageBtn = document.getElementById('remove-image-btn');
+const previewContainer = document.getElementById('image-preview-container');
+const previewImg = document.getElementById('image-preview');
+const removeImgBtn = document.getElementById('remove-image-btn');
+let selectedImage = null;
 
-let selectedMessageImage = null;
-
-imgBtn.addEventListener('click', () => {
-    messageImageInput.click();
-});
-
+imgBtn.addEventListener('click', () => messageImageInput.click());
 messageImageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) {
         const reader = new FileReader();
-        reader.onload = (event) => {
-            selectedMessageImage = event.target.result;
-            imagePreview.src = selectedMessageImage;
-            imagePreviewContainer.style.display = 'block';
+        reader.onload = (ev) => {
+            selectedImage = ev.target.result;
+            previewImg.src = selectedImage;
+            previewContainer.style.display = 'block';
         };
         reader.readAsDataURL(file);
     }
 });
-
-removeImageBtn.addEventListener('click', () => {
-    selectedMessageImage = null;
-    imagePreview.src = '';
-    imagePreviewContainer.style.display = 'none';
+removeImgBtn.addEventListener('click', () => {
+    selectedImage = null;
+    previewContainer.style.display = 'none';
     messageImageInput.value = '';
 });
 
-form.addEventListener('submit', function(e) {
+// Form Submission
+form.addEventListener('submit', (e) => {
     e.preventDefault();
-    if ((input.value.trim() || selectedMessageImage) && currentUsername) {
-        socket.emit('stop typing'); 
+    const text = input.value.trim();
+    if ((text || selectedImage) && currentUsername) {
         const now = new Date();
-        const time = now.getHours().toString().padStart(2, '0') + ':' + 
-                     now.getMinutes().toString().padStart(2, '0');
-        
         const msg = {
             username: currentUsername,
-            text: input.value,
-            time: time,
-            timestamp: Date.now(),
-            id: socket.id,
             userId: userId,
-            color: userColor,
+            text: text,
+            messageImage: selectedImage,
             image: userImage,
-            messageImage: selectedMessageImage, // Image jointe au message
-            bio: localStorage.getItem('chat-user-bio') || "Bonjour ! J'utilise Messagerie instantanée.",
-            status: localStorage.getItem('chat-user-status') || ""
+            time: now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0'),
+            timestamp: Date.now()
         };
         socket.emit('chat message', msg);
         input.value = '';
-        
-        // Réinitialiser l'image après envoi
-        selectedMessageImage = null;
-        imagePreview.src = '';
-        imagePreviewContainer.style.display = 'none';
+        selectedImage = null;
+        previewContainer.style.display = 'none';
         messageImageInput.value = '';
+        socket.emit('stop typing');
     }
 });
 
-// Gestion du bouton profil
-const profileBtn = document.getElementById('profile-btn');
-profileBtn.addEventListener('click', () => {
-    window.location.href = '/profil.html';
-});
-
-// Gestion du bouton Visio
-const visioBtn = document.getElementById('visio-btn');
-visioBtn.addEventListener('click', () => {
-    if (currentUsername) {
-        const now = new Date();
-        const time = now.getHours().toString().padStart(2, '0') + ':' + 
-                     now.getMinutes().toString().padStart(2, '0');
-        
-        const msg = {
-            username: currentUsername,
-            text: `CLIQUEZ ICI POUR REJOINDRE LA VISIO CONFÉRENCE DE ${currentUsername.toUpperCase()}`,
-            time: time,
-            timestamp: Date.now(),
-            id: socket.id,
-            userId: userId,
-            color: userColor,
-            image: userImage,
-            isVisio: true, // Marqueur spécial pour la visio
-            roomId: 'room_' + Math.random().toString(36).substr(2, 9) // ID de salon unique
-        };
-        socket.emit('chat message', msg);
-    }
-});
-
-// Gestion de la popup de suppression
-const clearBtn = document.getElementById('clear-btn');
-const confirmModal = document.getElementById('confirm-modal');
-const modalClose = document.getElementById('modal-close');
-const modalNo = document.getElementById('modal-no');
-const modalYes = document.getElementById('modal-yes');
-
-function showModal() {
-    confirmModal.style.display = 'flex';
-}
-
-function hideModal() {
-    confirmModal.style.display = 'none';
-}
-
-clearBtn.addEventListener('click', showModal);
-modalClose.addEventListener('click', hideModal);
-
-modalYes.addEventListener('click', () => {
-    // On enregistre le moment de la suppression localement
-    localStorage.setItem('chat-last-clear', Date.now());
-    messages.innerHTML = '';
-});
-
-let lastSender = null;
-let lastMessageElement = null;
-let lastMessageImage = null;
-
-// Gestion du visualiseur d'images (Lightbox)
-const imageViewer = document.getElementById('image-viewer');
-const viewerContent = document.getElementById('viewer-content');
+// Lightbox
+const viewer = document.getElementById('image-viewer');
+const viewerImg = document.getElementById('viewer-content');
 const viewerClose = document.getElementById('viewer-close');
 
-function openViewer(src) {
-    viewerContent.src = src;
-    imageViewer.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
+function openLightbox(src) {
+    viewerImg.src = src;
+    viewer.style.display = 'flex';
 }
+viewerClose.addEventListener('click', () => viewer.style.display = 'none');
+viewer.addEventListener('click', (e) => { if(e.target === viewer) viewer.style.display = 'none'; });
 
-function closeViewer() {
-    imageViewer.style.display = 'none';
-    document.body.style.overflow = '';
-}
-
-viewerClose.addEventListener('click', closeViewer);
-imageViewer.addEventListener('click', (e) => {
-    if (e.target === imageViewer) closeViewer();
+// Modals
+const clearBtn = document.getElementById('clear-btn');
+const modal = document.getElementById('confirm-modal');
+clearBtn.addEventListener('click', () => modal.style.display = 'flex');
+document.getElementById('modal-no').addEventListener('click', () => modal.style.display = 'none');
+document.getElementById('modal-yes').addEventListener('click', () => {
+    localStorage.setItem('chat-last-clear', Date.now());
+    messages.innerHTML = '';
+    modal.style.display = 'none';
 });
 
-function addMessage(msg, shouldVibrate = true) {
-    // Si le message est plus vieux que notre dernière suppression locale, on l'ignore
+document.getElementById('profile-btn').addEventListener('click', () => window.location.href = '/profil.html');
+
+document.getElementById('visio-btn').addEventListener('click', () => {
+    if (currentUsername) {
+        socket.emit('chat message', {
+            username: currentUsername,
+            userId: userId,
+            text: `Rejoignez ma visio conférence !`,
+            isVisio: true,
+            roomId: 'room_' + Math.random().toString(36).substr(2, 9),
+            time: new Date().getHours().toString().padStart(2, '0') + ':' + new Date().getMinutes().toString().padStart(2, '0'),
+            timestamp: Date.now()
+        });
+    }
+});
+
+// Message Rendering
+let lastSenderId = null;
+
+function renderMessage(msg) {
     const lastClear = parseInt(localStorage.getItem('chat-last-clear') || "0");
+    // If the lastClear is in the future (bad clock), reset it
+    if (lastClear > Date.now()) localStorage.removeItem('chat-last-clear');
+    
     if (msg.timestamp && msg.timestamp < lastClear) return;
 
-    const item = document.createElement('li');
-    let showAvatar = true;
-    
-    // Si c'est le même utilisateur qui continue d'écrire
-    if (lastSender === msg.username && lastMessageElement) {
-        item.classList.add('consecutive');
-        showAvatar = false; 
-    }
+    const isMe = msg.userId === userId;
+    const isConsecutive = lastSenderId === msg.userId;
+    lastSenderId = msg.userId;
 
-    // On vérifie si c'est NOTRE message
-    // Comparaison par userId (robuste), par socket.id (session actuelle), 
-    // ou par username (pour l'historique et en cas de retour à l'ancien pseudo)
-    const isMe = (msg.userId && msg.userId === userId) || 
-                 (msg.id === socket.id) || 
-                 (msg.username && currentUsername && msg.username.trim().toLowerCase() === currentUsername.trim().toLowerCase());
+    const li = document.createElement('li');
+    li.className = isMe ? 'sent' : 'received';
 
     // Avatar
     const avatar = document.createElement('div');
-    avatar.className = 'message-avatar clickable';
-    
-    // Pour les autres, on masque si consécutif. Pour soi, on masque TOUJOURS.
-    if (!showAvatar || isMe) {
-        avatar.style.visibility = 'hidden'; 
-    }
-    
-    if (msg.image) {
-        avatar.innerHTML = `<img src="${msg.image}" alt="">`;
-        avatar.style.backgroundColor = 'transparent';
+    avatar.className = 'message-avatar';
+    if (isMe || isConsecutive) {
+        avatar.style.visibility = 'hidden';
+        avatar.style.width = isMe ? '0' : '32px'; // Preserve space for received
     } else {
-        avatar.textContent = msg.username.charAt(0).toUpperCase();
-        avatar.style.backgroundColor = getColorForUser(msg.username);
-        avatar.style.color = 'white';
+        if (msg.image) {
+            avatar.innerHTML = `<img src="${msg.image}">`;
+        } else {
+            avatar.textContent = msg.username.charAt(0).toUpperCase();
+            avatar.style.backgroundColor = getColorForUser(msg.username);
+            avatar.style.color = 'white';
+        }
+        avatar.onclick = () => window.location.href = `/profil.html?userId=${msg.userId}`;
     }
 
-    // Clic sur l'avatar pour voir le profil
-    avatar.addEventListener('click', () => {
-        if (msg.userId) {
-            window.location.href = `/profil.html?userId=${msg.userId}`;
-        }
-    });
-    
-    // Contenu du message
     const main = document.createElement('div');
     main.className = 'message-main';
 
-    // Pseudo (uniquement si pas consécutif pour les autres)
-    if (lastSender !== msg.username) {
-        const userSpan = document.createElement('span');
-        userSpan.textContent = msg.username;
-        userSpan.className = 'username clickable';
-        userSpan.style.color = getColorForUser(msg.username);
-        
-        userSpan.addEventListener('click', () => {
-            if (msg.userId) {
-                window.location.href = `/profil.html?userId=${msg.userId}`;
-            }
-        });
+    const content = document.createElement('div');
+    content.className = 'message-content';
 
-        main.appendChild(userSpan);
+    if (!isMe && !isConsecutive) {
+        const name = document.createElement('span');
+        name.className = 'username';
+        name.textContent = msg.username;
+        name.style.color = getColorForUser(msg.username);
+        name.onclick = () => window.location.href = `/profil.html?userId=${msg.userId}`;
+        content.appendChild(name);
     }
-    
-    const contentDiv = document.createElement('div');
-    contentDiv.className = 'message-content';
-    
-    const textSpan = document.createElement('span');
-    textSpan.textContent = msg.text;
-    textSpan.className = 'text';
-
-    if (!msg.text) {
-        textSpan.style.display = 'none';
-    }
-
-    if (msg.isVisio) {
-        contentDiv.classList.add('visio-message');
-        textSpan.innerHTML = `<strong>${msg.text}</strong><br><a href="/visio.html?room=${msg.roomId}" class="visio-link">REJOINDRE LA VISIO</a>`;
-        textSpan.style.display = 'block';
-    }
-    
-    contentDiv.appendChild(textSpan);
 
     if (msg.messageImage) {
-        const msgImg = document.createElement('img');
-        msgImg.src = msg.messageImage;
-        msgImg.className = 'message-img';
-        msgImg.addEventListener('click', () => {
-            openViewer(msg.messageImage);
-        });
-        contentDiv.appendChild(msgImg);
+        const img = document.createElement('img');
+        img.src = msg.messageImage;
+        img.className = 'message-img';
+        img.onclick = () => openLightbox(msg.messageImage);
+        content.appendChild(img);
     }
-    
-    const timeSpan = document.createElement('span');
-    timeSpan.textContent = msg.time;
-    timeSpan.className = 'time';
-    
-    contentDiv.appendChild(textSpan);
-    contentDiv.appendChild(timeSpan);
-    main.appendChild(contentDiv);
 
-    if (isMe) {
-        item.classList.add('sent');
-        item.appendChild(main);
-        // Aucun avatar pour soi-même, le message sera collé à la bordure
-    } else {
-        item.classList.add('received');
-        item.appendChild(avatar);
-        item.appendChild(main);
-    }
-    
-    messages.appendChild(item);
-    messages.scrollTop = messages.scrollHeight;
-
-    lastSender = msg.username;
-    lastMessageElement = item;
-    lastMessageImage = msg.image;
-    
-    if (shouldVibrate && msg.username !== currentUsername && window.navigator.vibrate) {
-        try {
-            window.navigator.vibrate(50);
-        } catch (e) {
-            // Silencieux si le navigateur bloque (ex: pas d'interaction utilisateur)
+    if (msg.text) {
+        const txtWrapper = document.createElement('div');
+        txtWrapper.className = 'message-text-inner';
+        const txt = document.createElement('span');
+        txt.className = 'text';
+        txt.textContent = msg.text;
+        if (msg.isVisio) {
+            content.classList.add('visio-message');
+            txt.innerHTML = `<strong>${msg.text}</strong><br><a href="/visio.html?room=${msg.roomId}" class="visio-link" target="_blank">REJOINDRE</a>`;
         }
+        txtWrapper.appendChild(txt);
+        content.appendChild(txtWrapper);
     }
+
+    const time = document.createElement('span');
+    time.className = 'time';
+    time.textContent = msg.time;
+    content.appendChild(time);
+
+    main.appendChild(content);
+    if (!isMe) li.appendChild(avatar);
+    li.appendChild(main);
+    
+    messages.appendChild(li);
+    window.scrollTo(0, document.body.scrollHeight);
 }
 
-socket.on('load history', function(history) {
-    console.log('Historique reçu:', history.length, 'messages');
+socket.on('chat message', renderMessage);
+socket.on('load history', (history) => {
     messages.innerHTML = '';
-    // On ne fait pas vibrer pour l'historique
-    history.forEach(msg => addMessage(msg, false));
+    lastSenderId = null;
+    history.forEach(renderMessage);
 });
-
-socket.on('chat message', function(msg) {
-    addMessage(msg, true);
-});
-
-socket.on('messages cleared', function() {
+socket.on('messages cleared', () => {
     messages.innerHTML = '';
-});
-
-socket.on('profile updated', function(data) {
-    // Parcourir tous les messages pour mettre à jour l'avatar de l'utilisateur
-    const allMessages = messages.querySelectorAll('li');
-    allMessages.forEach(li => {
-        const usernameSpan = li.querySelector('.username');
-        if (usernameSpan && usernameSpan.textContent === data.username) {
-            const avatar = li.querySelector('.message-avatar');
-            if (avatar) {
-                if (data.image) {
-                    avatar.innerHTML = `<img src="${data.image}" alt="">`;
-                    avatar.style.backgroundColor = 'transparent';
-                } else {
-                    avatar.textContent = data.username.charAt(0).toUpperCase();
-                    avatar.style.backgroundColor = getColorForUser(data.username);
-                    avatar.style.color = 'white';
-                }
-            }
-        }
-    });
 });

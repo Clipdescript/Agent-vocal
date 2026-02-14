@@ -50,13 +50,15 @@ db.serialize(() => {
         messageImage TEXT,
         userId TEXT,
         bio TEXT,
-        status TEXT
+        status TEXT,
+        isVisio INTEGER DEFAULT 0,
+        roomId TEXT
     )`);
 
     // Migrations pour ajouter les colonnes si elles n'existent pas
-    const columns = ['userId', 'bio', 'status', 'messageImage'];
+    const columns = ['userId', 'bio', 'status', 'messageImage', 'isVisio', 'roomId'];
     columns.forEach(col => {
-        db.run(`ALTER TABLE messages ADD COLUMN ${col} TEXT`, (err) => {
+        db.run(`ALTER TABLE messages ADD COLUMN ${col} ${col === 'isVisio' ? 'INTEGER DEFAULT 0' : 'TEXT'}`, (err) => {
             // Ignorer l'erreur si la colonne existe déjà
         });
     });
@@ -78,8 +80,8 @@ io.on('connection', (socket) => {
         if (!msg.timestamp) msg.timestamp = Date.now();
         
         // Sauvegarder dans la base de données
-        const stmt = db.prepare("INSERT INTO messages (id, username, text, time, timestamp, color, image, messageImage, userId, bio, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        stmt.run(msg.id, msg.username, msg.text, msg.time, msg.timestamp, msg.color, msg.image, msg.messageImage, msg.userId, msg.bio, msg.status);
+        const stmt = db.prepare("INSERT INTO messages (id, username, text, time, timestamp, color, image, messageImage, userId, bio, status, isVisio, roomId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        stmt.run(msg.id, msg.username, msg.text, msg.time, msg.timestamp, msg.color, msg.image, msg.messageImage, msg.userId, msg.bio, msg.status, msg.isVisio ? 1 : 0, msg.roomId);
         stmt.finalize();
 
         io.emit('chat message', msg);

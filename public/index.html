@@ -3,72 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Messagerie instantanée</title>
+    <title>Messagerie Instantanée</title>
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="stylesheet" href="/css/style.css">
-    <link rel="stylesheet" href="/css/chat.css">
-    <link rel="stylesheet" href="/css/inputs.css">
-    <link rel="stylesheet" href="/css/viewer.css">
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
-    <!-- Visualiseur d'image -->
+    <!-- Visualiseur d'image plein écran -->
     <div id="image-viewer">
         <span id="viewer-close">&times;</span>
-        <img id="viewer-content">
+        <img id="viewer-content" src="" alt="Zoom">
     </div>
+
+    <!-- Choix du Pseudo -->
     <div id="username-overlay">
         <div id="username-box">
             <h2>Bienvenue !</h2>
-            <p>Veuillez entrer votre pseudo :</p>
+            <p>Choisis un pseudo pour commencer :</p>
             <input type="text" id="username-input" placeholder="Pseudo..." autocomplete="off">
             <button id="username-submit">Valider</button>
         </div>
     </div>
 
     <header>
-        <span>Messagerie instantanée</span>
+        <div class="header-left">
+            <span class="logo">Messagerie Instantanée</span>
+        </div>
         <div class="header-buttons">
-            <button id="visio-btn" title="Lancer une Visio">
-                <i data-lucide="video"></i>
-            </button>
-            <button id="profile-btn" title="Mon Profil">
-                <div id="profile-avatar"></div>
-            </button>
-            <button id="clear-btn" title="Supprimer les messages">
-                <i data-lucide="trash-2"></i>
-            </button>
+            <button id="visio-btn" title="Appel Vidéo"><i data-lucide="video"></i></button>
+            <button id="profile-btn" title="Mon Profil"><div id="profile-avatar"></div></button>
+            <button id="clear-btn" title="Effacer"><i data-lucide="trash-2"></i></button>
         </div>
     </header>
+
     <ul id="messages"></ul>
+    
     <div id="typing-indicator"></div>
-    <form id="form" action="">
+
+    <form id="form">
+        <!-- Aperçu de l'image avant envoi -->
         <div id="image-preview-container">
-            <img id="image-preview" src="" alt="Aperçu">
+            <img id="image-preview" src="" alt="Preview">
             <button id="remove-image-btn" type="button">&times;</button>
         </div>
-        <div id="input-container">
-            <input id="input" autocomplete="off" placeholder="Message..." />
-            <button id="img-btn" type="button"><i data-lucide="image"></i></button>
-            <button id="mic-btn" type="button"><i data-lucide="mic"></i></button>
+        
+        <div id="form-inner">
+            <div id="input-container">
+                <input id="input" autocomplete="off" placeholder="Message..." />
+                <div class="input-actions">
+                    <button id="img-btn" type="button"><i data-lucide="image"></i></button>
+                    <button id="mic-btn" type="button"><i data-lucide="mic"></i></button>
+                </div>
+            </div>
+            <button id="send" type="submit"><i data-lucide="send-horizontal"></i></button>
         </div>
-        <button id="send"><i data-lucide="send-horizontal"></i></button>
     </form>
-    <input type="file" id="message-image-input" accept="image/*" style="display: none;">
 
+    <!-- Modal de confirmation -->
     <div id="confirm-modal" class="modal-overlay">
         <div class="modal-box">
-            <button id="modal-close" class="modal-close-btn">&times;</button>
-            <h3>Confirmation</h3>
-            <p>Voulez-vous vraiment effacer votre historique de messages ?</p>
+            <h3>Supprimer l'historique ?</h3>
+            <p>Cette action est irréversible pour votre affichage local.</p>
             <div class="modal-buttons">
-                <button id="modal-no" class="btn-secondary">Non</button>
-                <button id="modal-yes" class="btn-danger">Oui</button>
+                <button id="modal-no" class="btn-secondary">Annuler</button>
+                <button id="modal-yes" class="btn-danger">Confirmer</button>
             </div>
         </div>
     </div>
 
-
+    <input type="file" id="message-image-input" accept="image/*" style="display: none;">
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/script.js"></script>
