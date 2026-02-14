@@ -40,7 +40,7 @@ header {
     background-color: #eee;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
-#profile-btn, #clear-btn {
+#profile-btn, #clear-btn, #visio-btn {
     background: none;
     border: none;
     color: white;
@@ -52,13 +52,13 @@ header {
     opacity: 0.8;
     transition: opacity 0.2s, transform 0.1s;
 }
-#profile-btn:hover, #clear-btn:hover {
+#profile-btn:hover, #clear-btn:hover, #visio-btn:hover {
     opacity: 1;
 }
-#profile-btn:active, #clear-btn:active {
+#profile-btn:active, #clear-btn:active, #visio-btn:active {
     transform: scale(0.9);
 }
-#clear-btn .lucide {
+#clear-btn .lucide, #visio-btn .lucide {
     width: 22px;
     height: 22px;
 }

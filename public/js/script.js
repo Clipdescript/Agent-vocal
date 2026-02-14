@@ -170,6 +170,30 @@ profileBtn.addEventListener('click', () => {
     window.location.href = '/profil.html';
 });
 
+// Gestion du bouton Visio
+const visioBtn = document.getElementById('visio-btn');
+visioBtn.addEventListener('click', () => {
+    if (currentUsername) {
+        const now = new Date();
+        const time = now.getHours().toString().padStart(2, '0') + ':' + 
+                     now.getMinutes().toString().padStart(2, '0');
+        
+        const msg = {
+            username: currentUsername,
+            text: `CLIQUEZ ICI POUR REJOINDRE LA VISIO CONFÉRENCE DE ${currentUsername.toUpperCase()}`,
+            time: time,
+            timestamp: Date.now(),
+            id: socket.id,
+            userId: userId,
+            color: userColor,
+            image: userImage,
+            isVisio: true, // Marqueur spécial pour la visio
+            roomId: 'room_' + Math.random().toString(36).substr(2, 9) // ID de salon unique
+        };
+        socket.emit('chat message', msg);
+    }
+});
+
 // Gestion de la popup de suppression
 const clearBtn = document.getElementById('clear-btn');
 const confirmModal = document.getElementById('confirm-modal');
@@ -270,6 +294,11 @@ function addMessage(msg, shouldVibrate = true) {
     const textSpan = document.createElement('span');
     textSpan.textContent = msg.text;
     textSpan.className = 'text';
+
+    if (msg.isVisio) {
+        contentDiv.classList.add('visio-message');
+        textSpan.innerHTML = `<strong>${msg.text}</strong><br><a href="/visio.html?room=${msg.roomId}" class="visio-link">REJOINDRE LA VISIO</a>`;
+    }
     
     const timeSpan = document.createElement('span');
     timeSpan.textContent = msg.time;
