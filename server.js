@@ -3,15 +3,46 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
+const cors = require('cors');
 
 const app = express();
-// Augmenter la limite pour Express aussi
+
+// Middleware de logging
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+});
+
+app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const server = http.createServer(app);
 const io = new Server(server, {
-    maxHttpBufferSize: 5e7 // 50 Mo pour être sûr que tout passe
+    maxHttpBufferSize: 5e7,
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    },
+    allowEIO3: true // Pour la compatibilité au cas où
+});
+
+// Servir les fichiers statiques AVANT les autres routes
+const publicPath = path.join(__dirname, 'public');
+console.log(`Static files path: ${publicPath}`);
+
+const fs = require('fs');
+if (fs.existsSync(publicPath)) {
+    console.log('Public directory exists');
+    console.log('Contents:', fs.readdirSync(publicPath));
+} else {
+    console.error('Public directory NOT FOUND!');
+}
+
+app.use(express.static(publicPath));
+
+app.get('/health', (req, res) => {
+    res.send('OK');
 });
 
 // Initialisation de la base de données
@@ -39,8 +70,6 @@ db.serialize(() => {
         });
     });
 });
-
-app.use(express.static(path.join(__dirname, 'public')));
 
 io.on('connection', (socket) => {
     console.log('Un utilisateur s\'est connecté');
@@ -113,8 +142,13 @@ io.on('connection', (socket) => {
     });
 });
 
+// Gestionnaire 404 pour déboguer les fichiers manquants
+app.use((req, res) => {
+    console.warn(`404 - Not Found: ${req.url}`);
+    res.status(404).send(`La ressource demandée n'existe pas : ${req.url}`);
+});
+
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Serveur démarré sur http://localhost:${PORT}`);
-    console.log(`Accessible sur votre réseau local via votre IP (ex: http://192.168.1.XX:${PORT})`);
+server.listen(PORT, () => {
+    console.log(`Serveur démarré sur le port ${PORT}`);
 });
