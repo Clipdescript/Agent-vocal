@@ -2,7 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
-const sqlite3 = require('sqlite3').verbose();
+const { Pool } = require('pg');
 const cors = require('cors');
 
 const app = express();
@@ -24,7 +24,7 @@ const io = new Server(server, {
         origin: "*",
         methods: ["GET", "POST"]
     },
-    allowEIO3: true // Pour la compatibilité au cas où
+    allowEIO3: true
 });
 
 // Servir les fichiers statiques AVANT les autres routes
@@ -34,7 +34,6 @@ console.log(`Static files path: ${publicPath}`);
 const fs = require('fs');
 if (fs.existsSync(publicPath)) {
     console.log('Public directory exists');
-    console.log('Contents:', fs.readdirSync(publicPath));
 } else {
     console.error('Public directory NOT FOUND!');
 }
@@ -45,55 +44,59 @@ app.get('/health', (req, res) => {
     res.send('OK');
 });
 
-// Initialisation de la base de données
-const db = new sqlite3.Database('./database.sqlite');
-
-db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS messages (
-        id TEXT,
-        username TEXT,
-        text TEXT,
-        time TEXT,
-        timestamp INTEGER,
-        color TEXT,
-        image TEXT,
-        userId TEXT,
-        bio TEXT,
-        status TEXT
-    )`);
-
-    // Migrations pour ajouter les colonnes si elles n'existent pas
-    const columns = ['userId', 'bio', 'status'];
-    columns.forEach(col => {
-        db.run(`ALTER TABLE messages ADD COLUMN ${col} TEXT`, (err) => {
-            // Ignorer l'erreur si la colonne existe déjà
-        });
-    });
+// Initialisation de la base de données PostgreSQL (Supabase)
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL || 'postgresql://postgres:L9QUOo7LEK0IFzjq@db.ptuisotxdbcltnfduzsx.supabase.co:5432/postgres',
+    ssl: {
+        rejectUnauthorized: false
+    }
 });
+
+async function initDb() {
+    try {
+        await pool.query(`CREATE TABLE IF NOT EXISTS messages (
+            id TEXT,
+            username TEXT,
+            text TEXT,
+            time TEXT,
+            timestamp BIGINT,
+            color TEXT,
+            image TEXT,
+            userId TEXT,
+            bio TEXT,
+            status TEXT
+        )`);
+        console.log('Base de données initialisée');
+    } catch (err) {
+        console.error('Erreur lors de l\'initialisation de la DB:', err);
+    }
+}
+
+initDb();
 
 io.on('connection', (socket) => {
     console.log('Un utilisateur s\'est connecté');
 
     // Charger l'historique depuis la base de données
-    db.all("SELECT * FROM messages ORDER BY timestamp ASC", (err, rows) => {
+    pool.query("SELECT * FROM messages ORDER BY timestamp ASC", (err, result) => {
         if (err) {
             console.error('Erreur lors du chargement de l\'historique:', err);
         } else {
-            socket.emit('load history', rows);
+            socket.emit('load history', result.rows);
         }
     });
 
-    socket.on('chat message', (msg) => {
-        // S'assurer qu'il y a un timestamp pour la persistence locale
+    socket.on('chat message', async (msg) => {
         if (!msg.timestamp) msg.timestamp = Date.now();
         
-        // Sauvegarder dans la base de données
-        const stmt = db.prepare("INSERT INTO messages (id, username, text, time, timestamp, color, image, userId, bio, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        stmt.run(msg.id, msg.username, msg.text, msg.time, msg.timestamp, msg.color, msg.image, msg.userId, msg.bio, msg.status);
-        stmt.finalize();
-
-        // On renvoie l'objet message tel quel (contient .text, .id, .timestamp, .image)
-        io.emit('chat message', msg);
+        try {
+            const query = "INSERT INTO messages (id, username, text, time, timestamp, color, image, userId, bio, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)";
+            const values = [msg.id, msg.username, msg.text, msg.time, msg.timestamp, msg.color, msg.image, msg.userId, msg.bio, msg.status];
+            await pool.query(query, values);
+            io.emit('chat message', msg);
+        } catch (err) {
+            console.error('Erreur lors de la sauvegarde du message:', err);
+        }
     });
 
     socket.on('typing', (username) => {
@@ -104,37 +107,38 @@ io.on('connection', (socket) => {
         socket.broadcast.emit('user stop typing');
     });
 
-    socket.on('update profile', (data) => {
-        // Mettre à jour tous les messages de cet utilisateur dans la base de données
-        const stmt = db.prepare("UPDATE messages SET image = ?, userId = ?, bio = ?, status = ? WHERE userId = ? OR username = ?");
-        stmt.run(data.image, data.userId, data.bio, data.status, data.userId, data.username, (err) => {
-            if (!err) {
-                // Notifier tous les clients pour qu'ils mettent à jour l'affichage
-                io.emit('profile updated', data);
-            }
-        });
-        stmt.finalize();
+    socket.on('update profile', async (data) => {
+        try {
+            const query = "UPDATE messages SET image = $1, userId = $2, bio = $3, status = $4 WHERE userId = $2 OR username = $5";
+            const values = [data.image, data.userId, data.bio, data.status, data.username];
+            await pool.query(query, values);
+            io.emit('profile updated', data);
+        } catch (err) {
+            console.error('Erreur lors de la mise à jour du profil:', err);
+        }
     });
 
-    socket.on('get user profile', (uid) => {
-        // On récupère les infos depuis le message le plus récent de cet utilisateur
-        db.get("SELECT username, image, bio, status, userId FROM messages WHERE userId = ? ORDER BY timestamp DESC LIMIT 1", [uid], (err, row) => {
-            if (!err && row) {
-                socket.emit('user profile data', row);
+    socket.on('get user profile', async (uid) => {
+        try {
+            const query = "SELECT username, image, bio, status, userId FROM messages WHERE userId = $1 ORDER BY timestamp DESC LIMIT 1";
+            const result = await pool.query(query, [uid]);
+            if (result.rows.length > 0) {
+                socket.emit('user profile data', result.rows[0]);
             } else {
                 socket.emit('user profile data', null);
             }
-        });
+        } catch (err) {
+            console.error('Erreur lors de la récupération du profil:', err);
+        }
     });
 
-    socket.on('clear messages', () => {
-        db.run("DELETE FROM messages", (err) => {
-            if (err) {
-                console.error('Erreur lors de la suppression des messages:', err);
-            } else {
-                io.emit('messages cleared');
-            }
-        });
+    socket.on('clear messages', async () => {
+        try {
+            await pool.query("DELETE FROM messages");
+            io.emit('messages cleared');
+        } catch (err) {
+            console.error('Erreur lors de la suppression des messages:', err);
+        }
     });
 
     socket.on('disconnect', () => {
