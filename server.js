@@ -46,17 +46,21 @@ app.get('/health', (req, res) => {
 
 // Initialisation de la base de données PostgreSQL (Supabase)
 const pool = new Pool({
-    // Utilisation de l'IP directe IPv4 pour contourner l'erreur ENETUNREACH sur Render
-    connectionString: process.env.DATABASE_URL || 'postgresql://postgres:L9QUOo7LEK0IFzjq@15.236.143.208:5432/postgres',
+    // Utilisation du mode Transaction (Port 6543) qui est plus stable sur Render
+    connectionString: process.env.DATABASE_URL || 'postgresql://postgres.ptuisotxdbcltnfduzsx:L9QUOo7LEK0IFzjq@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true',
     ssl: {
         rejectUnauthorized: false
-    }
+    },
+    connectionTimeoutMillis: 10000 // 10 secondes pour éviter de bloquer indéfiniment
 });
 
-// Tester la connexion immédiatement avec plus de détails
+console.log('Tentative de connexion à Supabase via le Pooler...');
+
+// Tester la connexion immédiatement
 pool.connect((err, client, release) => {
     if (err) {
-        console.error('CRITICAL: ERREUR DE CONNEXION SUPABASE:', err.message);
+        console.error('❌ ERREUR DE CONNEXION SUPABASE:', err.message);
+        console.error('Détails:', err.code, err.stack);
         return;
     }
     console.log('✅ CONNEXION SUPABASE RÉUSSIE');
