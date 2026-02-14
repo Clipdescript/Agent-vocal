@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mon Profil</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="stylesheet" href="/css/profil.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <header>
+        <button id="back-btn" title="Retour au chat">
+            <i data-lucide="chevron-left"></i>
+        </button>
+        <span class="header-title" id="header-title">Mon Profil</span>
+    </header>
+
+    <main class="profil-container">
+        <div class="avatar-preview-section">
+            <div class="avatar-wrapper">
+                <div id="profil-avatar-big" class="clickable-avatar">
+                    <div class="avatar-content" id="avatar-content"></div>
+                    <div class="camera-overlay" id="camera-overlay">
+                        <i data-lucide="camera"></i>
+                    </div>
+                </div>
+                <div class="camera-badge" id="camera-badge">
+                    <i data-lucide="camera"></i>
+                </div>
+            </div>
+            <p id="profile-modifier-text" class="profile-modifier-text">Modifier</p>
+        </div>
+
+        <div class="form-group" id="group-pseudo" style="display: none;">
+            <label>Pseudo :</label>
+            <p id="display-username" class="display-value"></p>
+        </div>
+
+        <div class="form-group" id="group-info">
+            <label for="profile-info-input">Infos sur le profil :</label>
+            <input type="text" id="profile-info-input" placeholder="Bonjour ! J'utilise Messagerie instantanée." autocomplete="off">
+            <p id="display-bio" class="display-value" style="display: none;"></p>
+        </div>
+
+        <div class="form-group" id="group-input-pseudo">
+            <label for="profile-input">Changer votre pseudo :</label>
+            <input type="text" id="profile-input" placeholder="Nouveau pseudo..." autocomplete="off">
+        </div>
+
+        <div class="form-group" id="group-status">
+            <label for="profile-status-input">Actus :</label>
+            <input type="text" id="profile-status-input" placeholder="Votre actu du jour..." autocomplete="off">
+            <p id="display-status" class="display-value" style="display: none;"></p>
+        </div>
+
+        <input type="file" id="image-input" accept="image/png, image/jpeg, image/jpg" multiple style="display: none;">
+        <input type="file" id="camera-input" accept="image/*" capture="user" style="display: none;">
+
+        <div class="save-section">
+            <button id="profile-save" class="btn-success disabled" disabled>
+                <span id="save-text">Enregistrer les modifications</span>
+                <i id="save-loader" data-lucide="loader-2" class="spin" style="display: none;"></i>
+            </button>
+            <button id="profile-quit" class="btn-danger">Quitter</button>
+        </div>
+    </main>
+
+    <div id="bottom-sheet" class="bottom-sheet">
+        <div class="bottom-sheet-overlay" id="sheet-overlay"></div>
+        <div class="bottom-sheet-content">
+            <button id="close-sheet" class="close-sheet-btn">
+                <i data-lucide="x"></i>
+            </button>
+            <div class="sheet-handle"></div>
+            <div class="sheet-header">
+                <h3>Modifier la photo de profil</h3>
+            </div>
+            <div class="sheet-body">
+                <button class="sheet-option" id="btn-take-photo">
+                    <span>Prendre une photo</span>
+                    <i data-lucide="camera"></i>
+                </button>
+                <button class="sheet-option" id="btn-choose-photo">
+                    <span>Choisir une photo</span>
+                    <i data-lucide="image"></i>
+                </button>
+                <button class="sheet-option btn-sheet-danger" id="btn-delete-photo" style="display: none;">
+                    <span>Supprimer la photo</span>
+                    <i data-lucide="trash-2"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/profil.js"></script>
+</body>
+</html>
