@@ -96,13 +96,20 @@ io.on('connection', (socket) => {
     });
 
     socket.on('update profile', (data) => {
-        const stmt = db.prepare("UPDATE messages SET image = ?, userId = ?, bio = ?, status = ? WHERE userId = ? OR username = ?");
-        stmt.run(data.image, data.userId, data.bio, data.status, data.userId, data.username, (err) => {
-            if (!err) {
-                io.emit('profile updated', data);
-            }
+        // Récupérer les données existantes d'abord pour ne pas écraser par du vide
+        db.get("SELECT image, bio, status FROM messages WHERE userId = ? OR username = ? ORDER BY timestamp DESC LIMIT 1", [data.userId, data.username], (err, row) => {
+            const finalImage = data.image !== undefined ? data.image : (row ? row.image : null);
+            const finalBio = data.bio !== undefined ? data.bio : (row ? row.bio : null);
+            const finalStatus = data.status !== undefined ? data.status : (row ? row.status : null);
+
+            const stmt = db.prepare("UPDATE messages SET image = ?, bio = ?, status = ? WHERE userId = ? OR username = ?");
+            stmt.run(finalImage, finalBio, finalStatus, data.userId, data.username, (err) => {
+                if (!err) {
+                    io.emit('profile updated', { ...data, image: finalImage, bio: finalBio, status: finalStatus });
+                }
+            });
+            stmt.finalize();
         });
-        stmt.finalize();
     });
 
     socket.on('get user profile', (uid) => {
@@ -123,8 +130,32 @@ io.on('connection', (socket) => {
         });
     });
 
+    // --- WebRTC Signaling ---
+    socket.on('join-room', (payload) => {
+        const { roomID, username } = payload;
+        socket.join(roomID);
+        socket.roomID = roomID; // Stocker pour le disconnect
+        socket.to(roomID).emit('user-joined', { userId: socket.id, username });
+    });
+
+    socket.on('offer', (payload) => {
+        io.to(payload.target).emit('offer', { sdp: payload.sdp, from: socket.id, username: payload.username });
+    });
+
+    socket.on('answer', (payload) => {
+        io.to(payload.target).emit('answer', { sdp: payload.sdp, from: socket.id });
+    });
+
+    socket.on('ice-candidate', (payload) => {
+        io.to(payload.target).emit('ice-candidate', { candidate: payload.candidate, from: socket.id });
+    });
+    // ------------------------
+
     socket.on('disconnect', () => {
         console.log('Un utilisateur s\'est déconnecté');
+        if (socket.roomID) {
+            socket.to(socket.roomID).emit('user-left', socket.id);
+        }
     });
 });
 

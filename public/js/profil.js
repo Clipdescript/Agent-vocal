@@ -200,6 +200,29 @@ btnDeletePhoto.addEventListener('click', () => {
     savePhotoAutomatically();
 });
 
+socket.on('profile updated', (data) => {
+    if (data.userId === userId) {
+        if (data.image !== undefined) {
+            userImage = data.image;
+            if (userImage) localStorage.setItem('chat-user-image', userImage);
+            else localStorage.removeItem('chat-user-image');
+        }
+        if (data.username) {
+            currentUsername = data.username;
+            localStorage.setItem('chat-username', data.username);
+        }
+        if (data.bio) {
+            originalBio = data.bio;
+            localStorage.setItem('chat-user-bio', data.bio);
+        }
+        if (data.status) {
+            originalStatus = data.status;
+            localStorage.setItem('chat-user-status', data.status);
+        }
+        updatePreview();
+    }
+});
+
 function handleImageSelect(e) {
     const file = e.target.files[0];
     if (file) {

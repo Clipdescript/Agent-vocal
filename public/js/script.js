@@ -43,10 +43,17 @@ let userImage = localStorage.getItem('chat-user-image');
 let userId = localStorage.getItem('chat-user-id') || 'user_' + Math.random().toString(36).substr(2, 9);
 localStorage.setItem('chat-user-id', userId);
 
-const softColors = ['#3498db', '#2ecc71', '#e74c3c', '#9b59b6', '#1abc9c', '#e67e22', '#3f51b5', '#e91e63', '#00bcd4', '#27ae60'];
+const softColors = [
+    '#3498db', '#2ecc71', '#e74c3c', '#9b59b6', '#1abc9c', 
+    '#e67e22', '#3f51b5', '#e91e63', '#00bcd4', '#27ae60', 
+    '#2980b9', '#8e44ad', '#d35400', '#c0392b', '#16a085'
+];
 function getColorForUser(username) {
+    if (!username) return softColors[0];
     let hash = 0;
-    for (let i = 0; i < (username || "").length; i++) hash = username.charCodeAt(i) + ((hash << 5) - hash);
+    for (let i = 0; i < username.length; i++) {
+        hash = username.charCodeAt(i) + ((hash << 5) - hash);
+    }
     return softColors[Math.abs(hash) % softColors.length];
 }
 
@@ -90,6 +97,21 @@ input.addEventListener('input', () => {
 
 socket.on('user typing', (user) => { typingIndicator.textContent = `${user} écrit...`; });
 socket.on('user stop typing', () => { typingIndicator.textContent = ''; });
+
+socket.on('profile updated', (data) => {
+    if (data.userId === userId) {
+        if (data.username) {
+            currentUsername = data.username;
+            localStorage.setItem('chat-username', data.username);
+        }
+        if (data.image !== undefined) {
+            userImage = data.image;
+            if (userImage) localStorage.setItem('chat-user-image', userImage);
+            else localStorage.removeItem('chat-user-image');
+        }
+        updateHeaderAvatar();
+    }
+});
 
 // Image Selection & Preview
 const imgBtn = document.getElementById('img-btn');
@@ -243,10 +265,10 @@ function renderMessage(msg) {
         txtWrapper.className = 'message-text-inner';
         const txt = document.createElement('span');
         txt.className = 'text';
-        txt.textContent = msg.text;
         if (msg.isVisio) {
-            content.classList.add('visio-message');
-            txt.innerHTML = `<strong>${msg.text}</strong><br><a href="/visio.html?room=${msg.roomId}" class="visio-link" target="_blank">REJOINDRE</a>`;
+            txt.innerHTML = `Invitation visio : <a href="/visio.html?room=${msg.roomId}" target="_blank" style="color: #3498db; text-decoration: underline;">cliquez ici pour rejoindre</a>`;
+        } else {
+            txt.textContent = msg.text;
         }
         txtWrapper.appendChild(txt);
         content.appendChild(txtWrapper);
@@ -262,7 +284,7 @@ function renderMessage(msg) {
     li.appendChild(main);
     
     messages.appendChild(li);
-    window.scrollTo(0, document.body.scrollHeight);
+    li.scrollIntoView({ behavior: 'smooth', block: 'end' });
 }
 
 socket.on('chat message', renderMessage);
