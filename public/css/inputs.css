@@ -1,8 +1,11 @@
 #form { 
     display: flex; 
-    flex-direction: column;
     padding: 8px 12px; 
     background: #f0f2f5; 
+    align-items: center;
+    gap: 10px;
+    position: relative;
+    z-index: 10;
 }
 
 #input-container {
@@ -12,34 +15,51 @@
     padding: 5px 15px;
     flex-grow: 1;
     align-items: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
 #input { 
     border: none; 
-    padding: 8px; 
+    padding: 10px; 
     flex-grow: 1; 
     font-size: 16px;
+    background: transparent;
 }
 
 #input:focus { outline: none; }
 
+#send {
+    background: #075e54;
+    color: white;
+    border: none;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
 #image-preview-container {
     display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    width: 100%;
     padding: 10px;
-    background: #fff;
-    border-top-left-radius: 15px;
-    border-top-right-radius: 15px;
-    position: relative;
-    border-bottom: 1px solid #eee;
-    margin-bottom: -5px;
+    background: #f0f2f5;
+    border-top: 1px solid #ddd;
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.05);
 }
 
 #image-preview {
     max-width: 80px;
     max-height: 80px;
     border-radius: 8px;
-    display: block;
-    object-fit: cover;
+    border: 2px solid white;
 }
 
 #remove-image-btn {
@@ -53,7 +73,4 @@
     width: 22px;
     height: 22px;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }

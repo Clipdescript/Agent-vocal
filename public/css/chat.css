@@ -19,12 +19,20 @@
 .message-content {
     padding: 8px 12px;
     border-radius: 8px;
-    background: white;
-    box-shadow: 0 1px 1px rgba(0,0,0,0.1);
     display: flex;
     flex-direction: column;
     position: relative;
     word-wrap: break-word;
+}
+
+.sent .message-content {
+    background: #dcf8c6; /* Vert WhatsApp */
+    box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+}
+
+.received .message-content {
+    background: white;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.1);
 }
 
 .message-img {
