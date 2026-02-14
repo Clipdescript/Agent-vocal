@@ -47,14 +47,18 @@ app.get('/health', (req, res) => {
 // Initialisation de la base de données PostgreSQL (Supabase)
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL || 'postgresql://postgres:L9QUOo7LEK0IFzjq@db.ptuisotxdbcltnfduzsx.supabase.co:5432/postgres',
+    ssl: {
+        rejectUnauthorized: false
+    }
 });
 
-// Tester la connexion immédiatement
+// Tester la connexion immédiatement avec plus de détails
 pool.connect((err, client, release) => {
     if (err) {
-        return console.error('ERREUR DE CONNEXION SUPABASE:', err.stack);
+        console.error('CRITICAL: ERREUR DE CONNEXION SUPABASE:', err.message);
+        return;
     }
-    console.log('Connexion Supabase RÉUSSIE');
+    console.log('✅ CONNEXION SUPABASE RÉUSSIE');
     release();
 });
 
