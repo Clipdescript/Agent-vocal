@@ -52,14 +52,24 @@ db.serialize(() => {
         bio TEXT,
         status TEXT,
         isVisio INTEGER DEFAULT 0,
-        roomId TEXT
+        roomId TEXT,
+        audio TEXT,
+        audioWaveform TEXT,
+        audioDuration TEXT
     )`);
 
-    // Migrations pour ajouter les colonnes si elles n'existent pas
-    const columns = ['userId', 'bio', 'status', 'messageImage', 'isVisio', 'roomId'];
-    columns.forEach(col => {
-        db.run(`ALTER TABLE messages ADD COLUMN ${col} ${col === 'isVisio' ? 'INTEGER DEFAULT 0' : 'TEXT'}`, (err) => {
-            // Ignorer l'erreur si la colonne existe déjà
+    // Migrations de secours pour les bases existantes
+    const migrations = [
+        { name: 'audio', type: 'TEXT' },
+        { name: 'audioWaveform', type: 'TEXT' },
+        { name: 'audioDuration', type: 'TEXT' },
+        { name: 'isVisio', type: 'INTEGER DEFAULT 0' },
+        { name: 'roomId', type: 'TEXT' }
+    ];
+
+    migrations.forEach(col => {
+        db.run(`ALTER TABLE messages ADD COLUMN ${col.name} ${col.type}`, (err) => {
+            // On ignore l'erreur si la colonne existe déjà
         });
     });
 });
@@ -67,11 +77,8 @@ db.serialize(() => {
 io.on('connection', (socket) => {
     console.log('Un utilisateur s\'est connecté');
 
-    // Charger l'historique depuis la base de données
     db.all("SELECT * FROM messages ORDER BY timestamp ASC", (err, rows) => {
-        if (err) {
-            console.error('Erreur lors du chargement de l\'historique:', err);
-        } else {
+        if (!err) {
             socket.emit('load history', rows);
         }
     });
@@ -79,10 +86,20 @@ io.on('connection', (socket) => {
     socket.on('chat message', (msg) => {
         if (!msg.timestamp) msg.timestamp = Date.now();
         
-        // Sauvegarder dans la base de données
-        const stmt = db.prepare("INSERT INTO messages (id, username, text, time, timestamp, color, image, messageImage, userId, bio, status, isVisio, roomId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        stmt.run(msg.id, msg.username, msg.text, msg.time, msg.timestamp, msg.color, msg.image, msg.messageImage, msg.userId, msg.bio, msg.status, msg.isVisio ? 1 : 0, msg.roomId);
-        stmt.finalize();
+        const params = [
+            msg.id || null, msg.username || null, msg.text || null, msg.time || null, 
+            msg.timestamp, msg.color || null, msg.image || null, msg.messageImage || null, 
+            msg.userId || null, msg.bio || null, msg.status || null, 
+            msg.isVisio ? 1 : 0, msg.roomId || null, 
+            msg.audio || null, msg.audioWaveform || null, msg.audioDuration || null
+        ];
+
+        db.run(`INSERT INTO messages (
+            id, username, text, time, timestamp, color, image, messageImage, 
+            userId, bio, status, isVisio, roomId, audio, audioWaveform, audioDuration
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, params, function(err) {
+            if (err) console.error("Erreur INSERT:", err.message);
+        });
 
         io.emit('chat message', msg);
     });
@@ -132,14 +149,26 @@ io.on('connection', (socket) => {
 
     // --- WebRTC Signaling ---
     socket.on('join-room', (payload) => {
-        const { roomID, username } = payload;
+        const { roomID, username, image } = payload;
         socket.join(roomID);
         socket.roomID = roomID; // Stocker pour le disconnect
-        socket.to(roomID).emit('user-joined', { userId: socket.id, username });
+        socket.to(roomID).emit('user-joined', { userId: socket.id, username, image });
     });
 
     socket.on('offer', (payload) => {
-        io.to(payload.target).emit('offer', { sdp: payload.sdp, from: socket.id, username: payload.username });
+        io.to(payload.target).emit('offer', { sdp: payload.sdp, from: socket.id, username: payload.username, image: payload.image });
+    });
+
+    socket.on('video-state-change', (data) => {
+        if (socket.roomID) {
+            socket.to(socket.roomID).emit('video-state-change', { userId: socket.id, enabled: data.enabled });
+        }
+    });
+
+    socket.on('mic-state-change', (data) => {
+        if (socket.roomID) {
+            socket.to(socket.roomID).emit('mic-state-change', { userId: socket.id, enabled: data.enabled });
+        }
     });
 
     socket.on('answer', (payload) => {

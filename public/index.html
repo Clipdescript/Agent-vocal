@@ -55,6 +55,18 @@
                     <button id="mic-btn" type="button"><i data-lucide="mic"></i></button>
                 </div>
             </div>
+
+            <div id="recording-container" style="display: none;">
+                <button id="delete-rec-btn" type="button" class="rec-action-btn"><i data-lucide="trash-2"></i></button>
+                <div id="recording-info">
+                    <span id="recording-timer">0:00</span>
+                    <div id="waveform">
+                        <!-- Les barres seront générées ici dynamiquement -->
+                    </div>
+                </div>
+                <button id="stop-rec-btn" type="button" class="rec-action-btn pulse"><i data-lucide="pause"></i></button>
+            </div>
+
             <button id="send" type="submit"><i data-lucide="send-horizontal"></i></button>
         </div>
     </form>

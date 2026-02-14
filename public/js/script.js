@@ -8,26 +8,208 @@ const typingIndicator = document.getElementById('typing-indicator');
 
 // Logic for Speech Recognition
 const micBtn = document.getElementById('mic-btn');
+const inputContainer = document.getElementById('input-container');
+const recordingContainer = document.getElementById('recording-container');
+const recordingTimer = document.getElementById('recording-timer');
+const deleteRecBtn = document.getElementById('delete-rec-btn');
+const stopRecBtn = document.getElementById('stop-rec-btn');
+
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 if (SpeechRecognition) {
     const recognition = new SpeechRecognition();
     recognition.lang = 'fr-FR';
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    let recInterval;
+    let seconds = 0;
+    let audioContext, analyser, dataArray, source, animationId;
+    let lastDrawTime = 0;
+    let heightsBuffer = []; // Stocker les hauteurs pour l'envoi
+    const waveform = document.getElementById('waveform');
+
+    let mediaRecorder;
+    let audioChunks = [];
+    window.isRecordingVoice = false; // Utiliser une variable globale ou mieux scopée
+    let pendingSend = false;
+
+    async function initVisualizer() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            
+            // Initialisation MediaRecorder pour le vrai audio
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+            heightsBuffer = [];
+            window.isRecordingVoice = true;
+            pendingSend = false;
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) audioChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const base64Audio = reader.result;
+                    window.currentAudioData = base64Audio;
+                    window.currentAudioDuration = seconds;
+                    window.currentAudioWaveform = JSON.stringify(heightsBuffer.slice(-100));
+                    
+                    if (pendingSend) {
+                        sendCurrentMessage();
+                        pendingSend = false;
+                    }
+                };
+                reader.readAsDataURL(audioBlob);
+                window.isRecordingVoice = false;
+            };
+
+            mediaRecorder.start();
+
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            source = audioContext.createMediaStreamSource(stream);
+            source.connect(analyser);
+            analyser.fftSize = 256; 
+            const bufferLength = analyser.frequencyBinCount;
+            dataArray = new Uint8Array(bufferLength);
+            waveform.innerHTML = ''; // Nettoyer les ondes précédentes
+            draw(performance.now());
+        } catch (e) {
+            console.error("Visualizer error:", e);
+        }
+    }
+
+    function draw(timestamp) {
+        animationId = requestAnimationFrame(draw);
+        
+        // Nouvelle barre toutes les 80ms
+        if (timestamp - lastDrawTime < 80) return;
+        lastDrawTime = timestamp;
+
+        if (!analyser) return;
+        analyser.getByteFrequencyData(dataArray);
+
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i] * dataArray[i];
+        }
+        let rms = Math.sqrt(sum / dataArray.length);
+        
+        let height = (rms / 128) * 40 + 2;
+        if (height > 38) height = 38;
+
+        heightsBuffer.push(Math.round(height));
+
+        const bar = document.createElement('div');
+        bar.className = 'wave-bar';
+        bar.style.height = `${height}px`;
+        
+        waveform.appendChild(bar);
+        
+        if (waveform.children.length > 200) {
+            waveform.removeChild(waveform.firstChild);
+        }
+    }
+
+    function stopVisualizer() {
+        if (animationId) cancelAnimationFrame(animationId);
+        if (audioContext && audioContext.state !== 'closed') {
+            audioContext.close().catch(console.error);
+        }
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+        }
+    }
+
+    function startTimer() {
+        seconds = 0;
+        recordingTimer.textContent = "0:00";
+        recInterval = setInterval(() => {
+            seconds++;
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            recordingTimer.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+        }, 1000);
+    }
+
+    function stopTimer() {
+        clearInterval(recInterval);
+    }
+
+    function showRecordingUI() {
+        inputContainer.style.display = 'none';
+        recordingContainer.style.display = 'flex';
+        recordingContainer.classList.add('active');
+        startTimer();
+        initVisualizer();
+    }
+
+    function hideRecordingUI() {
+        inputContainer.style.display = 'flex';
+        recordingContainer.style.display = 'none';
+        recordingContainer.classList.remove('active');
+        stopTimer();
+        stopVisualizer();
+    }
 
     micBtn.addEventListener('click', () => {
-        if (micBtn.classList.contains('recording')) {
-            recognition.stop();
-        } else {
+        if (window.isRecordingVoice) return;
+        showRecordingUI();
+        try {
             recognition.start();
+        } catch (e) {
+            console.error("Speech recognition already started or error:", e);
         }
     });
 
-    recognition.onstart = () => micBtn.classList.add('recording');
-    recognition.onresult = (event) => { input.value += event.results[0][0].transcript; };
-    recognition.onerror = () => micBtn.classList.remove('recording');
-    recognition.onend = () => micBtn.classList.remove('recording');
+    deleteRecBtn.addEventListener('click', () => {
+        try { recognition.abort(); } catch(e) {}
+        input.value = '';
+        hideRecordingUI();
+        window.currentAudioData = null;
+        pendingSend = false;
+    });
+
+    stopRecBtn.addEventListener('click', () => {
+        if (window.isRecordingVoice) {
+            try { recognition.stop(); } catch(e) {}
+            recordingContainer.classList.remove('active');
+            stopTimer();
+            stopVisualizer();
+            stopRecBtn.innerHTML = '<i data-lucide="play"></i>';
+            lucide.createIcons();
+        }
+    });
+
+    recognition.onresult = (event) => {
+        let finalTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+                finalTranscript += event.results[i][0].transcript;
+            }
+        }
+        if (finalTranscript) {
+            input.value += finalTranscript;
+        }
+    };
+
+    recognition.onend = () => {
+        // Si on n'est plus en mode actif (stop appuyé), on reste dans l'UI pour envoyer
+        // Sinon c'est une fin naturelle ou erreur, on pourrait reset
+    };
+
+    // Modifier la soumission du formulaire pour reset l'UI
+    const originalSubmit = form.onsubmit;
+    form.addEventListener('submit', () => {
+        hideRecordingUI();
+        stopRecBtn.innerHTML = '<i data-lucide="pause"></i>';
+        lucide.createIcons();
+    });
+
 } else {
     micBtn.style.display = 'none';
 }
@@ -141,16 +323,20 @@ removeImgBtn.addEventListener('click', () => {
 });
 
 // Form Submission
-form.addEventListener('submit', (e) => {
-    e.preventDefault();
+function sendCurrentMessage() {
     const text = input.value.trim();
-    if ((text || selectedImage) && currentUsername) {
+    const audio = window.currentAudioData;
+
+    if ((text || selectedImage || audio) && currentUsername) {
         const now = new Date();
         const msg = {
             username: currentUsername,
             userId: userId,
             text: text,
             messageImage: selectedImage,
+            audio: audio,
+            audioWaveform: window.currentAudioWaveform,
+            audioDuration: window.currentAudioDuration,
             image: userImage,
             time: now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0'),
             timestamp: Date.now()
@@ -158,9 +344,23 @@ form.addEventListener('submit', (e) => {
         socket.emit('chat message', msg);
         input.value = '';
         selectedImage = null;
+        window.currentAudioData = null;
+        window.currentAudioWaveform = null;
+        window.currentAudioDuration = null;
         previewContainer.style.display = 'none';
         messageImageInput.value = '';
         socket.emit('stop typing');
+    }
+}
+
+form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    
+    if (window.isRecordingVoice) {
+        pendingSend = true;
+        hideRecordingUI();
+    } else {
+        sendCurrentMessage();
     }
 });
 
@@ -192,6 +392,7 @@ document.getElementById('profile-btn').addEventListener('click', () => window.lo
 document.getElementById('visio-btn').addEventListener('click', () => {
     if (currentUsername) {
         socket.emit('chat message', {
+            id: 'visio_' + Date.now(),
             username: currentUsername,
             userId: userId,
             text: `Rejoignez ma visio conférence !`,
@@ -206,7 +407,7 @@ document.getElementById('visio-btn').addEventListener('click', () => {
 // Message Rendering
 let lastSenderId = null;
 
-function renderMessage(msg) {
+function renderMessage(msg, shouldScroll = true) {
     const lastClear = parseInt(localStorage.getItem('chat-last-clear') || "0");
     // If the lastClear is in the future (bad clock), reset it
     if (lastClear > Date.now()) localStorage.removeItem('chat-last-clear');
@@ -223,9 +424,12 @@ function renderMessage(msg) {
     // Avatar
     const avatar = document.createElement('div');
     avatar.className = 'message-avatar';
-    if (isMe || isConsecutive) {
+    if (msg.audio) {
+        avatar.style.display = 'none'; // On cache l'avatar externe pour les vocaux
+    }
+    if (isConsecutive) {
         avatar.style.visibility = 'hidden';
-        avatar.style.width = isMe ? '0' : '32px'; // Preserve space for received
+        if (isMe) avatar.style.width = '0';
     } else {
         if (msg.image) {
             avatar.innerHTML = `<img src="${msg.image}">`;
@@ -260,17 +464,118 @@ function renderMessage(msg) {
         content.appendChild(img);
     }
 
-    if (msg.text) {
+    if (msg.text || msg.isVisio || msg.audio) {
         const txtWrapper = document.createElement('div');
         txtWrapper.className = 'message-text-inner';
-        const txt = document.createElement('span');
-        txt.className = 'text';
-        if (msg.isVisio) {
-            txt.innerHTML = `Invitation visio : <a href="/visio.html?room=${msg.roomId}" target="_blank" style="color: #3498db; text-decoration: underline;">cliquez ici pour rejoindre</a>`;
+        
+        if (msg.audio) {
+            const audioWrapper = document.createElement('div');
+            audioWrapper.className = 'audio-message';
+            
+            // Avatar à l'intérieur pour les messages reçus (uniquement si non consécutif)
+            if (!isMe && !isConsecutive) {
+                const innerAvatar = document.createElement('div');
+                innerAvatar.className = 'audio-inner-avatar';
+                if (msg.image) {
+                    innerAvatar.innerHTML = `<img src="${msg.image}">`;
+                } else {
+                    innerAvatar.textContent = msg.username.charAt(0).toUpperCase();
+                    innerAvatar.style.backgroundColor = getColorForUser(msg.username);
+                    innerAvatar.style.color = 'white';
+                }
+                audioWrapper.appendChild(innerAvatar);
+            }
+            // L'espace est maintenant automatiquement comblé car on n'ajoute plus de paddingLeft ici
+
+            const playBtn = document.createElement('button');
+            playBtn.className = 'audio-play-btn';
+            playBtn.innerHTML = '<i data-lucide="play"></i>';
+            
+            const audioElem = new Audio(msg.audio);
+            let isPlaying = false;
+            
+            playBtn.onclick = () => {
+                if (isPlaying) {
+                    audioElem.pause();
+                    audioElem.currentTime = 0; // Recommence au début si on coupe
+                } else {
+                    audioElem.play();
+                }
+            };
+            
+            audioElem.onplay = () => {
+                isPlaying = true;
+                playBtn.innerHTML = '<i data-lucide="pause"></i>';
+                waveContainer.classList.add('playing');
+                lucide.createIcons();
+            };
+            audioElem.onpause = () => {
+                isPlaying = false;
+                playBtn.innerHTML = '<i data-lucide="play"></i>';
+                waveContainer.classList.remove('playing');
+                // Réinitialiser les couleurs des barres
+                const bars = waveContainer.querySelectorAll('.static-wave-bar');
+                bars.forEach(b => b.style.background = '#90a4ae');
+                lucide.createIcons();
+            };
+            audioElem.onended = () => {
+                isPlaying = false;
+                audioElem.currentTime = 0;
+                playBtn.innerHTML = '<i data-lucide="play"></i>';
+                waveContainer.classList.remove('playing');
+                const bars = waveContainer.querySelectorAll('.static-wave-bar');
+                bars.forEach(b => b.style.background = '#90a4ae');
+                lucide.createIcons();
+            };
+
+            const waveContainer = document.createElement('div');
+            waveContainer.className = 'audio-waveform-static';
+
+            audioElem.ontimeupdate = () => {
+                const progress = audioElem.currentTime / audioElem.duration;
+                if (isNaN(progress)) return;
+                const bars = waveContainer.querySelectorAll('.static-wave-bar');
+                const count = Math.floor(progress * bars.length);
+                bars.forEach((bar, i) => {
+                    bar.style.background = i <= count ? '#075e54' : '#90a4ae';
+                });
+            };
+            
+            // Générer les barres à partir du buffer stocké
+            try {
+                const heights = JSON.parse(msg.audioWaveform || '[]');
+                heights.forEach(h => {
+                    const b = document.createElement('div');
+                    b.className = 'static-wave-bar';
+                    b.style.height = `${Math.max(3, h)}px`;
+                    waveContainer.appendChild(b);
+                });
+            } catch(e) { console.error("Waveform parse error", e); }
+
+            const durationInfo = document.createElement('div');
+            durationInfo.className = 'audio-duration-info';
+            const mins = Math.floor((msg.audioDuration || 0) / 60);
+            const secs = (msg.audioDuration || 0) % 60;
+            durationInfo.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+
+            audioWrapper.appendChild(playBtn);
+            audioWrapper.appendChild(waveContainer);
+            audioWrapper.appendChild(durationInfo);
+            txtWrapper.appendChild(audioWrapper);
+            
+            setTimeout(() => lucide.createIcons(), 0);
+        } else if (msg.isVisio == true || msg.isVisio == 1) {
+            const room = msg.roomId || 'default';
+            const txt = document.createElement('span');
+            txt.className = 'text';
+            txt.innerHTML = `Invitation visio : <a href="/visio.html?room=${room}" target="_blank">Rejoindre la visio</a>`;
+            txtWrapper.appendChild(txt);
         } else {
+            const txt = document.createElement('span');
+            txt.className = 'text';
             txt.textContent = msg.text;
+            txtWrapper.appendChild(txt);
         }
-        txtWrapper.appendChild(txt);
         content.appendChild(txtWrapper);
     }
 
@@ -284,14 +589,23 @@ function renderMessage(msg) {
     li.appendChild(main);
     
     messages.appendChild(li);
-    li.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    if (shouldScroll) {
+        setTimeout(() => {
+            li.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }, 100);
+    }
 }
 
 socket.on('chat message', renderMessage);
 socket.on('load history', (history) => {
     messages.innerHTML = '';
     lastSenderId = null;
-    history.forEach(renderMessage);
+    history.forEach(msg => renderMessage(msg, false));
+    
+    // Scroll to bottom after history is loaded
+    setTimeout(() => {
+        window.scrollTo(0, document.body.scrollHeight);
+    }, 100);
 });
 socket.on('messages cleared', () => {
     messages.innerHTML = '';

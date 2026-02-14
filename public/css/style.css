@@ -27,10 +27,13 @@ header {
 
 /* Messages List */
 #messages { 
-    padding: 15px 15px 80px 15px;
+    padding: 15px 15px 220px 15px; /* Augmenté pour mobile */
     display: flex; flex-direction: column; gap: 4px;
 }
-#messages li { display: flex; width: 100%; margin-bottom: 2px; align-items: flex-end; gap: 8px; }
+#messages li { 
+    display: flex; width: 100%; margin-bottom: 2px; align-items: flex-end; gap: 8px; 
+    scroll-margin-bottom: 220px;
+}
 #messages li.sent { justify-content: flex-end; }
 #messages li.received { justify-content: flex-start; }
 
@@ -67,8 +70,9 @@ header {
 #form-inner { display: flex; align-items: center; gap: 8px; max-width: 1000px; margin: 0 auto; }
 #input-container {
     background: white; border-radius: 25px; padding: 0 12px 0 18px;
-    flex-grow: 1; display: flex; align-items: center; gap: 8px;
+    flex: 1; display: flex; align-items: center; gap: 8px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    min-width: 0;
 }
 #input { border: none; padding: 12px 0; flex-grow: 1; font-size: 16px; outline: none; background: transparent; }
 .input-actions { display: flex; align-items: center; gap: 6px; }
@@ -86,6 +90,161 @@ header {
     transition: background 0.2s;
 }
 #send:hover { background: #128c7e; }
+
+/* Recording Interface */
+#recording-container {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: white;
+    border-radius: 25px;
+    padding: 5px 15px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    animation: slideInRec 0.3s ease;
+    overflow: hidden; /* Empêche tout débordement */
+}
+
+#recording-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+#waveform {
+    display: flex;
+    flex-direction: row-reverse; /* Commence à droite */
+    align-items: center;
+    gap: 2px;
+    height: 40px;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    justify-content: flex-start; /* Aligné sur le bord droit */
+}
+
+.wave-bar {
+    width: 2px;
+    min-height: 2px;
+    background: #90a4ae;
+    border-radius: 1px;
+    flex-shrink: 0; /* Garde sa largeur */
+}
+
+@keyframes waveFade {
+    0% { opacity: 1; }
+    70% { opacity: 0.8; }
+    100% { opacity: 0; }
+}
+
+#recording-container.active .wave-bar {
+    background: #90a4ae;
+}
+
+@keyframes waveAnim {
+    /* Removed static animation */
+}
+
+.rec-action-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    color: #667;
+    transition: color 0.2s;
+}
+
+#delete-rec-btn:hover { color: #ea4335; }
+#stop-rec-btn { color: #ea4335; border: 2px solid #ea4335; border-radius: 50%; padding: 5px; }
+
+.pulse {
+    animation: pulseRed 1.5s infinite;
+}
+
+@keyframes pulseRed {
+    0% { box-shadow: 0 0 0 0 rgba(234, 67, 53, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(234, 67, 53, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(234, 67, 53, 0); }
+}
+
+/* Audio Message Styles */
+.audio-message {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px;
+    min-width: 160px; /* Plus petit */
+}
+
+.audio-play-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #555;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.audio-inner-avatar {
+    width: 32px; /* Taille standard */
+    height: 32px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    overflow: hidden;
+    margin-right: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 12px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.audio-inner-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.audio-play-btn .lucide {
+    width: 24px; /* Plus petit */
+    height: 24px;
+    fill: currentColor;
+}
+
+.audio-waveform-static {
+    display: flex;
+    align-items: center;
+    gap: 1.5px;
+    flex-grow: 1;
+    height: 24px; /* Plus fin */
+    overflow: hidden;
+}
+
+.static-wave-bar {
+    width: 2px;
+    background: #90a4ae;
+    border-radius: 1px;
+    transition: background 0.2s ease;
+}
+
+/* La couleur des barres en lecture est gérée dynamiquement par le JS */
+.audio-duration-info {
+    font-size: 10px;
+    color: #666;
+    margin-top: auto;
+    padding-bottom: 2px;
+}
 
 /* Image Preview before sending */
 #image-preview-container {
