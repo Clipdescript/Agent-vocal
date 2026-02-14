@@ -46,12 +46,12 @@ app.get('/health', (req, res) => {
 
 // Initialisation de la base de données PostgreSQL (Supabase)
 const pool = new Pool({
-    // Utilisation du mode Transaction (Port 6543) qui est plus stable sur Render
-    connectionString: process.env.DATABASE_URL || 'postgresql://postgres.ptuisotxdbcltnfduzsx:L9QUOo7LEK0IFzjq@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true',
+    // Utilisation du port 5432 avec l'identifiant user.project qui est plus standard
+    connectionString: process.env.DATABASE_URL || 'postgresql://postgres.ptuisotxdbcltnfduzsx:L9QUOo7LEK0IFzjq@aws-0-eu-central-1.pooler.supabase.com:5432/postgres',
     ssl: {
         rejectUnauthorized: false
     },
-    connectionTimeoutMillis: 10000 // 10 secondes pour éviter de bloquer indéfiniment
+    connectionTimeoutMillis: 10000
 });
 
 console.log('Tentative de connexion à Supabase via le Pooler...');
