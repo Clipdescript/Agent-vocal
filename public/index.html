@@ -6,9 +6,17 @@
     <title>Messagerie instantanée</title>
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/chat.css">
+    <link rel="stylesheet" href="/css/inputs.css">
+    <link rel="stylesheet" href="/css/viewer.css">
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
+    <!-- Visualiseur d'image -->
+    <div id="image-viewer">
+        <span id="viewer-close">&times;</span>
+        <img id="viewer-content">
+    </div>
     <div id="username-overlay">
         <div id="username-box">
             <h2>Bienvenue !</h2>

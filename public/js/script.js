@@ -262,6 +262,27 @@ let lastSender = null;
 let lastMessageElement = null;
 let lastMessageImage = null;
 
+// Gestion du visualiseur d'images (Lightbox)
+const imageViewer = document.getElementById('image-viewer');
+const viewerContent = document.getElementById('viewer-content');
+const viewerClose = document.getElementById('viewer-close');
+
+function openViewer(src) {
+    viewerContent.src = src;
+    imageViewer.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeViewer() {
+    imageViewer.style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+viewerClose.addEventListener('click', closeViewer);
+imageViewer.addEventListener('click', (e) => {
+    if (e.target === imageViewer) closeViewer();
+});
+
 function addMessage(msg, shouldVibrate = true) {
     // Si le message est plus vieux que notre dernière suppression locale, on l'ignore
     const lastClear = parseInt(localStorage.getItem('chat-last-clear') || "0");
@@ -352,9 +373,7 @@ function addMessage(msg, shouldVibrate = true) {
         msgImg.src = msg.messageImage;
         msgImg.className = 'message-img';
         msgImg.addEventListener('click', () => {
-            // Ouvrir l'image en grand dans un nouvel onglet
-            const win = window.open();
-            win.document.write(`<img src="${msg.messageImage}" style="max-width:100%; height:auto;">`);
+            openViewer(msg.messageImage);
         });
         contentDiv.appendChild(msgImg);
     }
