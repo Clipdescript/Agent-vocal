@@ -55,7 +55,8 @@ db.serialize(() => {
         roomId TEXT,
         audio TEXT,
         audioWaveform TEXT,
-        audioDuration TEXT
+        audioDuration TEXT,
+        reactions TEXT
     )`);
 
     db.run(`CREATE TABLE IF NOT EXISTS group_info (
@@ -78,6 +79,7 @@ db.serialize(() => {
         { name: 'audio', type: 'TEXT' },
         { name: 'audioWaveform', type: 'TEXT' },
         { name: 'audioDuration', type: 'TEXT' },
+        { name: 'reactions', type: 'TEXT' },
         { name: 'isVisio', type: 'INTEGER DEFAULT 0' },
         { name: 'roomId', type: 'TEXT' }
     ];
@@ -106,17 +108,36 @@ io.on('connection', (socket) => {
             msg.timestamp, msg.color || null, msg.image || null, msg.messageImage || null, 
             msg.userId || null, msg.bio || null, msg.status || null, 
             msg.isVisio ? 1 : 0, msg.roomId || null, 
-            msg.audio || null, msg.audioWaveform || null, msg.audioDuration || null
+            msg.audio || null, msg.audioWaveform || null, msg.audioDuration || null,
+            msg.reactions || null
         ];
 
         db.run(`INSERT INTO messages (
             id, username, text, time, timestamp, color, image, messageImage, 
-            userId, bio, status, isVisio, roomId, audio, audioWaveform, audioDuration
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, params, function(err) {
+            userId, bio, status, isVisio, roomId, audio, audioWaveform, audioDuration, reactions
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, params, function(err) {
             if (err) console.error("Erreur INSERT:", err.message);
         });
 
         io.emit('chat message', msg);
+    });
+
+    socket.on('message reaction', (data) => {
+        const { timestamp, emoji } = data;
+        
+        db.get("SELECT reactions FROM messages WHERE timestamp = ?", [timestamp], (err, row) => {
+            if (!err && row) {
+                // Replace existing reactions with the new one (limit to one per message)
+                let reactions = [emoji];
+                
+                const reactionsStr = JSON.stringify(reactions);
+                db.run("UPDATE messages SET reactions = ? WHERE timestamp = ?", [reactionsStr, timestamp], (err) => {
+                    if (!err) {
+                        io.emit('message reaction updated', { timestamp, reactions });
+                    }
+                });
+            }
+        });
     });
 
     socket.on('typing', (username) => {

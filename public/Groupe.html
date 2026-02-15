@@ -29,6 +29,22 @@
 
     <ul id="messages"></ul>
     
+    <div id="message-overlay" class="message-overlay" style="display: none;"></div>
+    
+    <div id="message-context-menu" class="context-menu" style="display: none;">
+        <div class="reaction-bar">
+            <span>👍</span><span>❤️</span><span>😂</span><span>😮</span><span>😢</span><span>🙏</span>
+        </div>
+        <ul class="context-menu-list">
+            <li><span>Important</span><i data-lucide="star"></i></li>
+            <li id="menu-reply"><span>Répondre</span><i data-lucide="reply"></i></li>
+            <li><span>Transférer</span><i data-lucide="forward"></i></li>
+            <li id="menu-copy"><span>Copier</span><i data-lucide="copy"></i></li>
+            <li><span>Signaler</span><i data-lucide="alert-triangle"></i></li>
+            <li id="menu-delete" class="danger"><span>Supprimer</span><i data-lucide="trash-2"></i></li>
+        </ul>
+    </div>
+    
     <div id="typing-indicator"></div>
 
     <form id="form">

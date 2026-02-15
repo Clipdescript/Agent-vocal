@@ -436,12 +436,139 @@ document.getElementById('visio-btn').addEventListener('click', () => {
     }
 });
 
+// Context Menu Logic
+const contextMenu = document.getElementById('message-context-menu');
+const messageOverlay = document.getElementById('message-overlay');
+let selectedMessageId = null;
+let highlightedMessage = null;
+
+function showContextMenu(e, msgId, isMe, messageElement) {
+    if (e.cancelable) e.preventDefault();
+    e.stopPropagation();
+    selectedMessageId = msgId;
+    
+    if (highlightedMessage) highlightedMessage.classList.remove('highlighted');
+    highlightedMessage = messageElement;
+    highlightedMessage.classList.add('highlighted');
+    
+    messageOverlay.style.display = 'block';
+    contextMenu.style.display = 'flex';
+    contextMenu.classList.add('active');
+    
+    const rect = messageElement.getBoundingClientRect();
+    const reactionBar = contextMenu.querySelector('.reaction-bar');
+    const menuList = contextMenu.querySelector('.context-menu-list');
+    
+    // Vérifier si une réaction existe déjà pour décaler le menu vers le bas
+    const hasReaction = messageElement.querySelector('.message-reactions');
+    const offset = hasReaction ? 25 : 10;
+    
+    // Positionnement de la barre de réactions AU-DESSUS du message
+    reactionBar.style.position = 'fixed';
+    reactionBar.style.bottom = `${window.innerHeight - rect.top + 10}px`;
+    reactionBar.style.left = isMe ? 'auto' : `${rect.left}px`;
+    reactionBar.style.right = isMe ? `${window.innerWidth - rect.right}px` : 'auto';
+
+    // Positionnement de la liste d'actions EN-DESSOUS du message (décalé si réaction)
+    menuList.style.position = 'fixed';
+    menuList.style.top = `${rect.bottom + offset}px`;
+    menuList.style.left = isMe ? 'auto' : `${rect.left}px`;
+    menuList.style.right = isMe ? `${window.innerWidth - rect.right}px` : 'auto';
+
+    // Ajustements horizontaux pour ne pas sortir de l'écran
+    const menuWidth = 250;
+    let menuLeft = isMe ? rect.right - menuWidth : rect.left;
+    if (menuLeft < 10) menuLeft = 10;
+    if (menuLeft + menuWidth > window.innerWidth) menuLeft = window.innerWidth - menuWidth - 10;
+    
+    if (isMe) {
+        menuList.style.right = `${Math.max(10, window.innerWidth - rect.right)}px`;
+        menuList.style.left = 'auto';
+        reactionBar.style.right = `${Math.max(10, window.innerWidth - rect.right)}px`;
+        reactionBar.style.left = 'auto';
+    } else {
+        menuList.style.left = `${Math.max(10, rect.left)}px`;
+        menuList.style.right = 'auto';
+        reactionBar.style.left = `${Math.max(10, rect.left)}px`;
+        reactionBar.style.right = 'auto';
+    }
+
+    const deleteBtn = document.getElementById('menu-delete');
+    if (deleteBtn) deleteBtn.style.display = isMe ? 'flex' : 'none';
+}
+
+function hideContextMenu() {
+    contextMenu.style.display = 'none';
+    contextMenu.classList.remove('active');
+    messageOverlay.style.display = 'none';
+    if (highlightedMessage) {
+        highlightedMessage.classList.remove('highlighted');
+        highlightedMessage = null;
+    }
+    selectedMessageId = null;
+}
+
+messageOverlay.addEventListener('click', hideContextMenu);
+document.addEventListener('click', (e) => {
+    if (!contextMenu.contains(e.target) && !e.target.closest('.message-main')) hideContextMenu();
+});
+
+document.addEventListener('touchstart', (e) => {
+    if (!contextMenu.contains(e.target) && !e.target.closest('.message-main')) hideContextMenu();
+}, { passive: true });
+
+// Reactions click/touch
+contextMenu.querySelector('.reaction-bar').addEventListener('click', (e) => {
+    if (e.target.tagName === 'SPAN') {
+        const emoji = e.target.textContent;
+        socket.emit('message reaction', { timestamp: selectedMessageId, emoji: emoji });
+        hideContextMenu();
+    }
+});
+
+socket.on('message reaction updated', (data) => {
+    const { timestamp, reactions } = data;
+    const messageLi = Array.from(messages.querySelectorAll('li')).find(li => {
+        return li.dataset.timestamp == timestamp;
+    });
+    
+    if (messageLi) {
+        const main = messageLi.querySelector('.message-main');
+        let reactionsDiv = main.querySelector('.message-reactions');
+        
+        if (reactions && reactions.length > 0) {
+            if (!reactionsDiv) {
+                reactionsDiv = document.createElement('div');
+                reactionsDiv.className = 'message-reactions';
+                main.appendChild(reactionsDiv);
+            }
+            // Group identical reactions or just show unique ones?
+            // User asked for "multiple emojis even 2 3 etc"
+            // We'll show unique emojis and if needed a counter, but simple approach first
+            const uniqueReactions = [...new Set(reactions)];
+            reactionsDiv.textContent = uniqueReactions.join('');
+        } else if (reactionsDiv) {
+            reactionsDiv.remove();
+        }
+    }
+});
+
+document.getElementById('menu-copy')?.addEventListener('click', () => {
+    alert("Copié !");
+    hideContextMenu();
+});
+
+document.getElementById('menu-delete')?.addEventListener('click', () => {
+    if (confirm("Supprimer ce message ?")) {
+        hideContextMenu();
+    }
+});
+
 // Message Rendering
 let lastSenderId = null;
 
 function renderMessage(msg, shouldScroll = true) {
     const lastClear = parseInt(localStorage.getItem('chat-last-clear') || "0");
-    // If the lastClear is in the future (bad clock), reset it
     if (lastClear > Date.now()) localStorage.removeItem('chat-last-clear');
     
     if (msg.timestamp && msg.timestamp < lastClear) return;
@@ -453,6 +580,7 @@ function renderMessage(msg, shouldScroll = true) {
     const li = document.createElement('li');
     li.className = isMe ? 'sent' : 'received';
     if (isConsecutive) li.classList.add('consecutive');
+    li.dataset.timestamp = msg.timestamp;
 
     // Avatar
     const avatar = document.createElement('div');
@@ -469,11 +597,33 @@ function renderMessage(msg, shouldScroll = true) {
             avatar.style.backgroundColor = getColorForUser(msg.username);
             avatar.style.color = 'white';
         }
-        avatar.onclick = () => window.location.href = `/profil.html?userId=${msg.userId}`;
+        avatar.onclick = () => window.location.href = `/profil.html?userId=${msg.userId}&from=group`;
     }
 
     const main = document.createElement('div');
     main.className = 'message-main';
+
+    // Menu contextuel uniquement sur la bulle du message
+    let pressTimer;
+    const startPress = (e) => {
+        pressTimer = setTimeout(() => showContextMenu(e, msg.timestamp || Date.now(), isMe, main), 500);
+    };
+    const cancelPress = () => clearTimeout(pressTimer);
+
+    main.addEventListener('mousedown', startPress);
+    main.addEventListener('touchstart', startPress, { passive: true });
+    main.addEventListener('mouseup', cancelPress);
+    main.addEventListener('mouseleave', cancelPress);
+    main.addEventListener('touchend', cancelPress);
+    main.addEventListener('touchmove', cancelPress);
+
+    main.addEventListener('click', (e) => {
+        if (e.target.closest('.message-reactions')) {
+            e.stopPropagation();
+            return;
+        }
+        showContextMenu(e, msg.timestamp || Date.now(), isMe, main);
+    });
 
     const content = document.createElement('div');
     content.className = 'message-content';
@@ -608,6 +758,21 @@ function renderMessage(msg, shouldScroll = true) {
     content.appendChild(time);
 
     main.appendChild(content);
+
+    // Render reactions if any
+    if (msg.reactions) {
+        try {
+            const reactions = JSON.parse(msg.reactions);
+            if (reactions && reactions.length > 0) {
+                const reactionsDiv = document.createElement('div');
+                reactionsDiv.className = 'message-reactions';
+                const uniqueReactions = [...new Set(reactions)];
+                reactionsDiv.textContent = uniqueReactions.join('');
+                main.appendChild(reactionsDiv);
+            }
+        } catch(e) {}
+    }
+
     if (!isMe) li.appendChild(avatar);
     li.appendChild(main);
     
