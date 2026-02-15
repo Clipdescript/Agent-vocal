@@ -57,6 +57,8 @@ header {
 }
 #messages li.sent .message-main { background: #dcf8c6; border-bottom-right-radius: 2px; }
 #messages li.received .message-main { background: white; border-bottom-left-radius: 2px; }
+#messages li.sent.consecutive .message-main { border-bottom-right-radius: 12px; }
+#messages li.received.consecutive .message-main { border-bottom-left-radius: 12px; }
 
 .message-content { padding: 4px; display: flex; flex-direction: column; }
 .message-text-inner { padding: 2px 6px; }

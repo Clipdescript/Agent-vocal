@@ -446,6 +446,7 @@ function renderMessage(msg, shouldScroll = true) {
 
     const li = document.createElement('li');
     li.className = isMe ? 'sent' : 'received';
+    if (isConsecutive) li.classList.add('consecutive');
 
     // Avatar
     const avatar = document.createElement('div');
