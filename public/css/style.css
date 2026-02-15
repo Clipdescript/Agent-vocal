@@ -7,15 +7,15 @@ body {
 
 /* Header */
 header {
-    background: #075e54; color: white; padding: 10px 15px;
+    background: white; color: #075e54; padding: 10px 15px;
     display: flex; align-items: center; justify-content: space-between;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 1000;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1); z-index: 1000;
     position: sticky; top: 0; width: 100%;
 }
-.logo { font-weight: bold; font-size: 18px; }
+.logo { font-weight: normal; font-size: 18px; }
 .header-buttons { display: flex; align-items: center; gap: 12px; }
 #profile-btn, #clear-btn, #visio-btn {
-    background: none; border: none; color: white; cursor: pointer;
+    background: none; border: none; color: #075e54; cursor: pointer;
     display: flex; align-items: center; justify-content: center; opacity: 0.9;
 }
 #profile-avatar {
@@ -64,46 +64,67 @@ header {
 
 /* Form & Inputs */
 #form { 
-    background: #f0f2f5; padding: 10px; border-top: 1px solid #ddd; 
+    background: white; padding: 10px; border-top: 1px solid #eee; 
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000;
 }
 #form-inner { display: flex; align-items: center; gap: 8px; max-width: 1000px; margin: 0 auto; }
+
+.action-circle-btn {
+    background: #f0f2f5;
+    border: none;
+    color: #555;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.2s, transform 0.1s;
+}
+.action-circle-btn:hover { background: #e0e2e5; transform: scale(1.05); }
+.action-circle-btn .lucide { width: 22px; height: 22px; }
+
+.action-circle-btn {
+    background: #f0f2f5;
+    border: none;
+    color: #555;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.action-circle-btn .lucide { width: 22px; height: 22px; }
+
 #input-container {
-    background: white; border-radius: 25px; padding: 0 12px 0 18px;
+    background: #f0f2f5; border-radius: 25px; padding: 0 20px;
     flex: 1; display: flex; align-items: center; gap: 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     min-width: 0;
 }
 #input { border: none; padding: 12px 0; flex-grow: 1; font-size: 16px; outline: none; background: transparent; }
-.input-actions { display: flex; align-items: center; gap: 6px; }
-.input-actions button { 
-    background: #f0f2f5; border: none; color: #555; 
-    cursor: pointer; padding: 7px; display: flex; border-radius: 50%;
-    transition: background 0.2s, transform 0.1s;
-}
-.input-actions button:hover { background: #e0e2e5; transform: scale(1.05); }
-.input-actions button .lucide { width: 20px; height: 20px; }
+
 #send {
-    background: #075e54; color: white; border: none; width: 45px; height: 45px;
-    border-radius: 50%; display: flex; align-items: center; justify-content: center; 
-    cursor: pointer; flex-shrink: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    transition: background 0.2s;
+    display: none; /* Supprimé selon demande */
 }
-#send:hover { background: #128c7e; }
 
 /* Recording Interface */
 #recording-container {
     flex: 1;
     min-width: 0;
+    height: 45px; /* Hauteur fixe pour correspondre à la barre de texte */
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: white;
+    background: #f0f2f5;
     border-radius: 25px;
-    padding: 5px 15px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    animation: slideInRec 0.3s ease;
-    overflow: hidden; /* Empêche tout débordement */
+    padding: 0 15px;
+    box-shadow: none;
+    overflow: hidden;
 }
 
 #recording-info {
@@ -112,19 +133,20 @@ header {
     gap: 10px;
     flex: 1;
     min-width: 0;
+    height: 100%;
     overflow: hidden;
 }
 
 #waveform {
     display: flex;
-    flex-direction: row-reverse; /* Commence à droite */
+    flex-direction: row-reverse;
     align-items: center;
     gap: 3px;
-    height: 40px;
+    height: 100%;
     flex: 1;
     min-width: 0;
     overflow: hidden;
-    justify-content: flex-start; /* Aligné sur le bord droit */
+    justify-content: flex-start;
 }
 
 .wave-bar {
@@ -163,6 +185,8 @@ header {
 
 #delete-rec-btn:hover { color: #ea4335; }
 #stop-rec-btn { color: #ea4335; border: 2px solid #ea4335; border-radius: 50%; padding: 5px; }
+#send-rec-btn { color: #075e54; }
+#send-rec-btn:hover { transform: scale(1.1); }
 
 .pulse {
     animation: pulseRed 1.5s infinite;

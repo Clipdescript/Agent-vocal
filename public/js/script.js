@@ -8,11 +8,13 @@ const typingIndicator = document.getElementById('typing-indicator');
 
 // Logic for Speech Recognition
 const micBtn = document.getElementById('mic-btn');
+const imgBtn = document.getElementById('img-btn');
 const inputContainer = document.getElementById('input-container');
 const recordingContainer = document.getElementById('recording-container');
 const recordingTimer = document.getElementById('recording-timer');
 const deleteRecBtn = document.getElementById('delete-rec-btn');
 const stopRecBtn = document.getElementById('stop-rec-btn');
+const sendRecBtn = document.getElementById('send-rec-btn');
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -116,10 +118,6 @@ if (SpeechRecognition) {
         bar.style.height = `${height}px`;
         
         waveform.appendChild(bar);
-        
-        if (waveform.children.length > 200) {
-            waveform.removeChild(waveform.firstChild);
-        }
     }
 
     function stopVisualizer() {
@@ -148,6 +146,8 @@ if (SpeechRecognition) {
     }
 
     function showRecordingUI() {
+        imgBtn.style.display = 'none';
+        micBtn.style.display = 'none';
         inputContainer.style.display = 'none';
         recordingContainer.style.display = 'flex';
         recordingContainer.classList.add('active');
@@ -156,12 +156,19 @@ if (SpeechRecognition) {
     }
 
     function hideRecordingUI() {
+        imgBtn.style.display = 'flex';
+        micBtn.style.display = 'flex';
         inputContainer.style.display = 'flex';
         recordingContainer.style.display = 'none';
         recordingContainer.classList.remove('active');
         stopTimer();
         stopVisualizer();
     }
+
+    sendRecBtn.addEventListener('click', () => {
+        pendingSend = true;
+        hideRecordingUI();
+    });
 
     micBtn.addEventListener('click', () => {
         if (window.isRecordingVoice) return;
@@ -303,7 +310,6 @@ socket.on('profile updated', (data) => {
 });
 
 // Image Selection & Preview
-const imgBtn = document.getElementById('img-btn');
 const messageImageInput = document.getElementById('message-image-input');
 const previewContainer = document.getElementById('image-preview-container');
 const previewImg = document.getElementById('image-preview');
