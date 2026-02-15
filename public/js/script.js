@@ -447,7 +447,10 @@ function showContextMenu(e, msgId, isMe, messageElement) {
     e.stopPropagation();
     selectedMessageId = msgId;
     
-    if (highlightedMessage) highlightedMessage.classList.remove('highlighted');
+    if (highlightedMessage) {
+        highlightedMessage.classList.remove('highlighted');
+        highlightedMessage.style.transform = '';
+    }
     highlightedMessage = messageElement;
     highlightedMessage.classList.add('highlighted');
     
@@ -459,37 +462,51 @@ function showContextMenu(e, msgId, isMe, messageElement) {
     const reactionBar = contextMenu.querySelector('.reaction-bar');
     const menuList = contextMenu.querySelector('.context-menu-list');
     
+    // Calcul du déplacement nécessaire (Translation) pour éviter que ça sorte de l'écran
+    let translateY = 0;
+    const reactionHeight = 60;
+    const menuHeight = 320;
+    const margin = 20;
+
+    if (rect.top < reactionHeight + margin) {
+        // Trop haut : on décale vers le bas
+        translateY = (reactionHeight + margin) - rect.top;
+    } else if (rect.bottom > window.innerHeight - menuHeight - margin) {
+        // Trop bas : on décale vers le haut
+        translateY = (window.innerHeight - menuHeight - margin) - rect.bottom;
+    }
+
+    // Appliquer la translation au message
+    highlightedMessage.style.transform = `scale(1.02) translateY(${translateY}px)`;
+
+    const shiftedRect = {
+        top: rect.top + translateY,
+        bottom: rect.bottom + translateY,
+        left: rect.left,
+        right: rect.right
+    };
+
     // Vérifier si une réaction existe déjà pour décaler le menu vers le bas
     const hasReaction = messageElement.querySelector('.message-reactions');
     const offset = hasReaction ? 25 : 10;
     
-    // Positionnement de la barre de réactions AU-DESSUS du message
+    // Positionnement de la barre de réactions AU-DESSUS du message décalé
     reactionBar.style.position = 'fixed';
-    reactionBar.style.bottom = `${window.innerHeight - rect.top + 10}px`;
-    reactionBar.style.left = isMe ? 'auto' : `${rect.left}px`;
-    reactionBar.style.right = isMe ? `${window.innerWidth - rect.right}px` : 'auto';
-
-    // Positionnement de la liste d'actions EN-DESSOUS du message (décalé si réaction)
-    menuList.style.position = 'fixed';
-    menuList.style.top = `${rect.bottom + offset}px`;
-    menuList.style.left = isMe ? 'auto' : `${rect.left}px`;
-    menuList.style.right = isMe ? `${window.innerWidth - rect.right}px` : 'auto';
-
-    // Ajustements horizontaux pour ne pas sortir de l'écran
-    const menuWidth = 250;
-    let menuLeft = isMe ? rect.right - menuWidth : rect.left;
-    if (menuLeft < 10) menuLeft = 10;
-    if (menuLeft + menuWidth > window.innerWidth) menuLeft = window.innerWidth - menuWidth - 10;
+    reactionBar.style.bottom = `${window.innerHeight - shiftedRect.top + 10}px`;
     
+    // Positionnement de la liste d'actions EN-DESSOUS du message décalé
+    menuList.style.position = 'fixed';
+    menuList.style.top = `${shiftedRect.bottom + offset}px`;
+
     if (isMe) {
-        menuList.style.right = `${Math.max(10, window.innerWidth - rect.right)}px`;
+        menuList.style.right = `${Math.max(10, window.innerWidth - shiftedRect.right)}px`;
         menuList.style.left = 'auto';
-        reactionBar.style.right = `${Math.max(10, window.innerWidth - rect.right)}px`;
+        reactionBar.style.right = `${Math.max(10, window.innerWidth - shiftedRect.right)}px`;
         reactionBar.style.left = 'auto';
     } else {
-        menuList.style.left = `${Math.max(10, rect.left)}px`;
+        menuList.style.left = `${Math.max(10, shiftedRect.left)}px`;
         menuList.style.right = 'auto';
-        reactionBar.style.left = `${Math.max(10, rect.left)}px`;
+        reactionBar.style.left = `${Math.max(10, shiftedRect.left)}px`;
         reactionBar.style.right = 'auto';
     }
 
@@ -498,14 +515,24 @@ function showContextMenu(e, msgId, isMe, messageElement) {
 }
 
 function hideContextMenu() {
-    contextMenu.style.display = 'none';
-    contextMenu.classList.remove('active');
-    messageOverlay.style.display = 'none';
+    if (!contextMenu.classList.contains('active')) return;
+    
+    contextMenu.classList.add('closing');
+    messageOverlay.classList.add('closing');
+    
     if (highlightedMessage) {
         highlightedMessage.classList.remove('highlighted');
-        highlightedMessage = null;
+        highlightedMessage.style.transform = ''; // Reset transform
     }
-    selectedMessageId = null;
+
+    setTimeout(() => {
+        contextMenu.style.display = 'none';
+        contextMenu.classList.remove('active', 'closing');
+        messageOverlay.style.display = 'none';
+        messageOverlay.classList.remove('closing');
+        highlightedMessage = null;
+        selectedMessageId = null;
+    }, 300); // Durée de la transition CSS
 }
 
 messageOverlay.addEventListener('click', hideContextMenu);
@@ -633,7 +660,7 @@ function renderMessage(msg, shouldScroll = true) {
         name.className = 'username';
         name.textContent = msg.username;
         name.style.color = getColorForUser(msg.username);
-        name.onclick = () => window.location.href = `/profil.html?userId=${msg.userId}`;
+        name.onclick = () => window.location.href = `/profil.html?userId=${msg.userId}&from=group`;
         content.appendChild(name);
     }
 
