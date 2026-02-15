@@ -427,7 +427,7 @@ document.getElementById('visio-btn').addEventListener('click', () => {
             id: 'visio_' + Date.now(),
             username: currentUsername,
             userId: userId,
-            text: `Rejoignez ma visio conférence !`,
+            text: `Rejoignez ma visioconférence !`,
             isVisio: true,
             roomId: 'room_' + Math.random().toString(36).substr(2, 9),
             time: new Date().getHours().toString().padStart(2, '0') + ':' + new Date().getMinutes().toString().padStart(2, '0'),
@@ -512,6 +512,25 @@ function showContextMenu(e, msgId, isMe, messageElement) {
 
     const deleteBtn = document.getElementById('menu-delete');
     if (deleteBtn) deleteBtn.style.display = isMe ? 'flex' : 'none';
+
+    // Cacher l'option Copier pour les messages vocaux
+    const copyBtn = document.getElementById('menu-copy');
+    const isAudio = messageElement.querySelector('.audio-message');
+    if (copyBtn) copyBtn.style.display = isAudio ? 'none' : 'flex';
+}
+
+function showToast(message) {
+    const toast = document.getElementById('custom-toast');
+    toast.querySelector('span').textContent = message;
+    toast.style.display = 'flex';
+    toast.classList.remove('fade-out');
+    
+    setTimeout(() => {
+        toast.classList.add('fade-out');
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 500);
+    }, 2000);
 }
 
 function hideContextMenu() {
@@ -581,7 +600,15 @@ socket.on('message reaction updated', (data) => {
 });
 
 document.getElementById('menu-copy')?.addEventListener('click', () => {
-    alert("Copié !");
+    const messageLi = Array.from(messages.querySelectorAll('li')).find(li => li.dataset.timestamp == selectedMessageId);
+    if (messageLi) {
+        const textElem = messageLi.querySelector('.text');
+        if (textElem) {
+            navigator.clipboard.writeText(textElem.textContent).then(() => {
+                showToast("Copié dans le presse-papier");
+            });
+        }
+    }
     hideContextMenu();
 });
 
