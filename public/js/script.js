@@ -1,6 +1,45 @@
 const socket = io();
 lucide.createIcons();
 
+// Register Service Worker
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then(registration => {
+            console.log('SW registered');
+        }).catch(err => {
+            console.log('SW registration failed: ', err);
+        });
+    });
+}
+
+// Request Notification Permission
+if ("Notification" in window) {
+    if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+        Notification.requestPermission();
+    }
+}
+
+// Listen for messages from Service Worker (Quick Reply)
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.type === 'REPLY_MSG' || event.data.type === 'REPLY_MSG') {
+            const replyText = event.data.text;
+            if (replyText && currentUsername) {
+                const now = new Date();
+                const msg = {
+                    username: currentUsername,
+                    userId: userId,
+                    text: replyText,
+                    image: userImage,
+                    time: now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0'),
+                    timestamp: Date.now()
+                };
+                socket.emit('chat message', msg);
+            }
+        }
+    });
+}
+
 const form = document.getElementById('form');
 const input = document.getElementById('input');
 const messages = document.getElementById('messages');
@@ -841,7 +880,29 @@ function renderMessage(msg, shouldScroll = true) {
     }
 }
 
-socket.on('chat message', renderMessage);
+socket.on('chat message', (msg) => {
+    renderMessage(msg);
+    
+    // Notification logic
+    if (msg.userId !== userId && document.hidden) {
+        if ("Notification" in window && Notification.permission === "granted") {
+            const options = {
+                body: msg.audio ? "🎤 Message vocal" : (msg.text || "📷 Image"),
+                icon: msg.image || '/favicon.png',
+                badge: '/favicon.png',
+                vibrate: [100, 50, 100],
+                data: { timestamp: msg.timestamp },
+                actions: [
+                    { action: 'reply', title: 'Répondre', type: 'text', placeholder: 'Écrire une réponse...' }
+                ]
+            };
+            
+            navigator.serviceWorker.ready.then(registration => {
+                registration.showNotification(msg.username, options);
+            });
+        }
+    }
+});
 socket.on('load history', (history) => {
     messages.innerHTML = '';
     lastSenderId = null;
