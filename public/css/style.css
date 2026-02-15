@@ -167,6 +167,99 @@ header {
     30% { transform: translateY(-4px); }
 }
 
+/* Reply Preview & Bubbles */
+#reply-preview-container {
+    background: #f7f7f7;
+    border-radius: 12px 12px 0 0;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid #eee;
+    position: relative;
+    border-left: 4px solid transparent;
+    margin: 0;
+    box-shadow: 0 -1px 3px rgba(0,0,0,0.05);
+}
+
+#reply-preview-bar {
+    width: 4px;
+    height: 100%;
+    position: absolute;
+    left: 0;
+    top: 0;
+    border-radius: 4px 0 0 4px;
+}
+
+#reply-preview-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#reply-preview-user {
+    font-weight: bold;
+    font-size: 13px;
+    margin-bottom: 2px;
+}
+
+#reply-preview-text {
+    font-size: 13px;
+    color: #666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#close-reply-btn {
+    background: none;
+    border: none;
+    color: #888;
+    cursor: pointer;
+    padding: 5px;
+}
+
+/* WhatsApp style reply in message bubble */
+.message-reply-wrapper {
+    background: rgba(0,0,0,0.05);
+    border-radius: 8px;
+    margin: 4px;
+    padding: 6px 10px;
+    border-left: 4px solid transparent;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 8px;
+}
+
+#messages li.sent .message-reply-wrapper {
+    background: rgba(0,0,0,0.04);
+}
+
+.reply-username {
+    font-weight: bold;
+    font-size: 12px;
+    margin-bottom: 2px;
+}
+
+.reply-text {
+    font-size: 13px;
+    color: #444;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@keyframes highlightFlash {
+    0% { background-color: rgba(7, 94, 84, 0.2); }
+    100% { background-color: transparent; }
+}
+
+.highlight-animation .message-main {
+    animation: highlightFlash 2s ease-out;
+}
+
 /* Form & Inputs */
 #form { 
     background: white; padding: 10px; border-top: 1px solid #eee; 
@@ -210,6 +303,10 @@ header {
     background: #f0f2f5; border-radius: 25px; padding: 0 20px;
     flex: 1; display: flex; align-items: center; gap: 8px;
     min-width: 0;
+}
+#reply-preview-container.active + #input-container {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
 }
 #input { border: none; padding: 12px 0; flex-grow: 1; font-size: 16px; outline: none; background: transparent; }
 

@@ -45,6 +45,14 @@ const input = document.getElementById('input');
 const messages = document.getElementById('messages');
 const typingIndicator = document.getElementById('typing-indicator');
 
+// Reply Logic Elements
+const replyPreview = document.getElementById('reply-preview-container');
+const replyPreviewUser = document.getElementById('reply-preview-user');
+const replyPreviewText = document.getElementById('reply-preview-text');
+const replyPreviewBar = document.getElementById('reply-preview-bar');
+const closeReplyBtn = document.getElementById('close-reply-btn');
+let replyingTo = null;
+
 // Logic for Speech Recognition
 const micBtn = document.getElementById('mic-btn');
 const imgBtn = document.getElementById('img-btn');
@@ -492,7 +500,8 @@ function sendCurrentMessage() {
             audioDuration: window.currentAudioDuration,
             image: userImage,
             time: now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0'),
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            replyTo: replyingTo
         };
         socket.emit('chat message', msg);
         input.value = '';
@@ -502,6 +511,7 @@ function sendCurrentMessage() {
         window.currentAudioDuration = null;
         previewContainer.style.display = 'none';
         messageImageInput.value = '';
+        closeReplyPreview();
         socket.emit('stop typing');
     }
 }
@@ -623,6 +633,10 @@ function showContextMenu(e, msgId, isMe, messageElement) {
     const deleteBtn = document.getElementById('menu-delete');
     if (deleteBtn) deleteBtn.style.display = isMe ? 'flex' : 'none';
 
+    // Cacher l'option Répondre pour ses propres messages
+    const replyBtn = document.getElementById('menu-reply');
+    if (replyBtn) replyBtn.style.display = isMe ? 'none' : 'flex';
+
     // Cacher l'option Copier pour les messages vocaux
     const copyBtn = document.getElementById('menu-copy');
     const isAudio = messageElement.querySelector('.audio-message');
@@ -709,6 +723,36 @@ socket.on('message reaction updated', (data) => {
     }
 });
 
+function openReplyPreview(username, text, timestamp) {
+    replyingTo = { username, text, timestamp };
+    replyPreviewUser.textContent = username;
+    replyPreviewUser.style.color = getColorForUser(username);
+    replyPreviewText.textContent = text;
+    replyPreviewBar.style.backgroundColor = getColorForUser(username);
+    replyPreview.style.display = 'flex';
+    replyPreview.classList.add('active');
+    input.focus();
+}
+
+function closeReplyPreview() {
+    replyingTo = null;
+    replyPreview.style.display = 'none';
+    replyPreview.classList.remove('active');
+}
+
+closeReplyBtn.addEventListener('click', closeReplyPreview);
+
+document.getElementById('menu-reply')?.addEventListener('click', () => {
+    const messageLi = Array.from(messages.querySelectorAll('li')).find(li => li.dataset.timestamp == selectedMessageId);
+    if (messageLi) {
+        const username = messageLi.querySelector('.username')?.textContent || (messageLi.className === 'sent' ? currentUsername : "Utilisateur");
+        const textElem = messageLi.querySelector('.text');
+        const text = textElem ? textElem.textContent : (messageLi.querySelector('.audio-message') ? "Message vocal" : "Image");
+        openReplyPreview(username, text, selectedMessageId);
+    }
+    hideContextMenu();
+});
+
 document.getElementById('menu-copy')?.addEventListener('click', () => {
     const messageLi = Array.from(messages.querySelectorAll('li')).find(li => li.dataset.timestamp == selectedMessageId);
     if (messageLi) {
@@ -791,6 +835,49 @@ function renderMessage(msg, shouldScroll = true) {
 
     const content = document.createElement('div');
     content.className = 'message-content';
+
+    // Rendu de la réponse si présente
+    if (msg.replyTo) {
+        let replyData = msg.replyTo;
+        if (typeof replyData === 'string') {
+            try {
+                replyData = JSON.parse(replyData);
+            } catch (e) {
+                console.error("Error parsing replyTo:", e);
+                replyData = null;
+            }
+        }
+
+        if (replyData) {
+            const replyWrapper = document.createElement('div');
+            replyWrapper.className = 'message-reply-wrapper';
+            replyWrapper.style.borderLeftColor = getColorForUser(replyData.username);
+            
+            const rName = document.createElement('span');
+            rName.className = 'reply-username';
+            rName.textContent = replyData.username;
+            rName.style.color = getColorForUser(replyData.username);
+            
+            const rText = document.createElement('span');
+            rText.className = 'reply-text';
+            rText.textContent = replyData.text;
+            
+            replyWrapper.appendChild(rName);
+            replyWrapper.appendChild(rText);
+            
+            replyWrapper.onclick = (e) => {
+                e.stopPropagation();
+                const target = messages.querySelector(`li[data-timestamp="${replyData.timestamp}"]`);
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    target.classList.add('highlight-animation');
+                    setTimeout(() => target.classList.remove('highlight-animation'), 2000);
+                }
+            };
+            
+            content.appendChild(replyWrapper);
+        }
+    }
 
     if (!isMe && !isConsecutive) {
         const name = document.createElement('span');

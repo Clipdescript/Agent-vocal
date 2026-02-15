@@ -56,7 +56,8 @@ db.serialize(() => {
         audio TEXT,
         audioWaveform TEXT,
         audioDuration TEXT,
-        reactions TEXT
+        reactions TEXT,
+        replyTo TEXT
     )`);
 
     db.run(`CREATE TABLE IF NOT EXISTS group_info (
@@ -80,6 +81,7 @@ db.serialize(() => {
         { name: 'audioWaveform', type: 'TEXT' },
         { name: 'audioDuration', type: 'TEXT' },
         { name: 'reactions', type: 'TEXT' },
+        { name: 'replyTo', type: 'TEXT' },
         { name: 'isVisio', type: 'INTEGER DEFAULT 0' },
         { name: 'roomId', type: 'TEXT' }
     ];
@@ -109,13 +111,14 @@ io.on('connection', (socket) => {
             msg.userId || null, msg.bio || null, msg.status || null, 
             msg.isVisio ? 1 : 0, msg.roomId || null, 
             msg.audio || null, msg.audioWaveform || null, msg.audioDuration || null,
-            msg.reactions || null
+            msg.reactions || null,
+            msg.replyTo ? JSON.stringify(msg.replyTo) : null
         ];
 
         db.run(`INSERT INTO messages (
             id, username, text, time, timestamp, color, image, messageImage, 
-            userId, bio, status, isVisio, roomId, audio, audioWaveform, audioDuration, reactions
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, params, function(err) {
+            userId, bio, status, isVisio, roomId, audio, audioWaveform, audioDuration, reactions, replyTo
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, params, function(err) {
             if (err) console.error("Erreur INSERT:", err.message);
         });
 
