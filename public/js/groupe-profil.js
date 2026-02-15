@@ -156,6 +156,10 @@ function updatePreview() {
 
 function saveGroupInfoAutomatically(data) {
     try {
+        // Mettre à jour LocalStorage immédiatement
+        const updatedData = { ...currentGroupData, ...data };
+        localStorage.setItem('chat-group-info', JSON.stringify(updatedData));
+        
         socket.emit('update group info', data);
     } catch (e) {
         console.error("Erreur enregistrement groupe:", e);
@@ -240,10 +244,13 @@ saveBtn.addEventListener('click', () => {
 
     setTimeout(() => {
         const data = { name: newName, description: newDesc };
-        socket.emit('update group info', data);
         
+        // Mettre à jour LocalStorage
         currentGroupData.name = newName;
         currentGroupData.description = newDesc;
+        localStorage.setItem('chat-group-info', JSON.stringify(currentGroupData));
+
+        socket.emit('update group info', data);
         
         saveLoader.style.display = "none";
         saveText.textContent = "Enregistré";
