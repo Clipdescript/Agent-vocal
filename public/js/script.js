@@ -424,9 +424,16 @@ function renderMessage(msg, shouldScroll = true) {
     // Avatar
     const avatar = document.createElement('div');
     avatar.className = 'message-avatar';
+    
+    // Pour les vocaux, on gère l'avatar différemment
     if (msg.audio) {
-        avatar.style.display = 'none'; // On cache l'avatar externe pour les vocaux
+        if (isConsecutive) {
+            avatar.style.display = 'none'; // Cache complètement l'avatar externe si consécutif
+        } else {
+            avatar.style.visibility = 'hidden'; // Garde l'espace pour l'avatar externe
+        }
     }
+
     if (isConsecutive) {
         avatar.style.visibility = 'hidden';
         if (isMe) avatar.style.width = '0';
@@ -484,8 +491,11 @@ function renderMessage(msg, shouldScroll = true) {
                     innerAvatar.style.color = 'white';
                 }
                 audioWrapper.appendChild(innerAvatar);
+            } else if (!isMe && isConsecutive) {
+                // Pour les messages consécutifs sans avatar, on ajoute un padding pour ne pas coller à la bordure
+                // et rester aligné avec le message au-dessus qui a un avatar
+                audioWrapper.style.marginLeft = '40px'; 
             }
-            // L'espace est maintenant automatiquement comblé car on n'ajoute plus de paddingLeft ici
 
             const playBtn = document.createElement('button');
             playBtn.className = 'audio-play-btn';

@@ -1,4 +1,7 @@
-const socket = io();
+const socket = io({
+    transports: ['websocket'],
+    upgrade: false
+});
 lucide.createIcons();
 
 const urlParams = new URLSearchParams(window.location.search);
@@ -45,16 +48,21 @@ const peerConnections = {};
 const config = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
-    ]
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun3.l.google.com:19302' },
+        { urls: 'stun:stun4.l.google.com:19302' }
+    ],
+    iceCandidatePoolSize: 10
 };
 
 async function start() {
     try {
+        console.log("Démarrage de la visio dans la room:", roomID);
         const constraints = {
             video: {
-                width: { min: 640, ideal: 1920, max: 1920 },
-                height: { min: 480, ideal: 1080, max: 1080 },
+                width: { min: 640, ideal: 1280, max: 1920 },
+                height: { min: 480, ideal: 720, max: 1080 },
                 frameRate: { ideal: 30, max: 60 }
             },
             audio: {
@@ -69,6 +77,7 @@ async function start() {
         socket.emit('join-room', { roomID, username, image: userImage });
         
         socket.on('user-joined', async (data) => {
+            console.log("Utilisateur rejoint:", data.username);
             if (peerConnections[data.userId]) return;
             const pc = createPeerConnection(data.userId, data.username, data.image);
             try {
@@ -79,6 +88,7 @@ async function start() {
         });
 
         socket.on('offer', async (data) => {
+            console.log("Offre reçue de:", data.username);
             const pc = createPeerConnection(data.from, data.username, data.image);
             try {
                 await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
@@ -86,7 +96,6 @@ async function start() {
                 await pc.setLocalDescription(answer);
                 socket.emit('answer', { target: data.from, sdp: pc.localDescription });
                 
-                // Process queued candidates
                 if (pc.iceQueue) {
                     pc.iceQueue.forEach(cand => pc.addIceCandidate(new RTCIceCandidate(cand)));
                     pc.iceQueue = [];
@@ -95,11 +104,11 @@ async function start() {
         });
 
         socket.on('answer', async (data) => {
+            console.log("Réponse reçue");
             const pc = peerConnections[data.from];
             if (pc) {
                 try {
                     await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-                    // Process queued candidates
                     if (pc.iceQueue) {
                         pc.iceQueue.forEach(cand => pc.addIceCandidate(new RTCIceCandidate(cand)));
                         pc.iceQueue = [];
@@ -115,7 +124,6 @@ async function start() {
                     if (pc.remoteDescription) {
                         await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
                     } else {
-                        // Queue candidate if remote description not yet set
                         if (!pc.iceQueue) pc.iceQueue = [];
                         pc.iceQueue.push(data.candidate);
                     }

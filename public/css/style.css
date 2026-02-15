@@ -119,7 +119,7 @@ header {
     display: flex;
     flex-direction: row-reverse; /* Commence à droite */
     align-items: center;
-    gap: 2px;
+    gap: 3px;
     height: 40px;
     flex: 1;
     min-width: 0;
@@ -128,10 +128,10 @@ header {
 }
 
 .wave-bar {
-    width: 2px;
-    min-height: 2px;
+    width: 3px;
+    min-height: 3px;
     background: #90a4ae;
-    border-radius: 1px;
+    border-radius: 10px;
     flex-shrink: 0; /* Garde sa largeur */
 }
 
@@ -179,8 +179,8 @@ header {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 2px;
-    min-width: 160px; /* Plus petit */
+    padding: 6px 8px; /* Ajout de padding interne pour ne pas coller aux bords de la bulle */
+    min-width: 160px;
 }
 
 .audio-play-btn {
@@ -224,17 +224,17 @@ header {
 
 .audio-waveform-static {
     display: flex;
-    align-items: center;
-    gap: 1.5px;
+    align-items: center; /* Centre les barres verticalement */
+    gap: 3px;
     flex-grow: 1;
-    height: 24px; /* Plus fin */
+    height: 30px;
     overflow: hidden;
 }
 
 .static-wave-bar {
-    width: 2px;
-    background: #90a4ae;
-    border-radius: 1px;
+    width: 3px;
+    background: #cfd8dc;
+    border-radius: 10px; /* Forme capsule */
     transition: background 0.2s ease;
 }
 
