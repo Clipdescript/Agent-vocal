@@ -522,12 +522,28 @@ form.addEventListener('submit', (e) => {
 const viewer = document.getElementById('image-viewer');
 const viewerImg = document.getElementById('viewer-content');
 const viewerClose = document.getElementById('viewer-close');
+const viewerDownload = document.getElementById('viewer-download');
 
 function openLightbox(src) {
     viewerImg.src = src;
     viewer.style.display = 'flex';
+    lucide.createIcons();
 }
+
+function downloadImage() {
+    const imgSrc = viewerImg.src;
+    if (!imgSrc) return;
+    
+    const link = document.createElement('a');
+    link.href = imgSrc;
+    link.download = `image_${Date.now()}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
 viewerClose.addEventListener('click', () => viewer.style.display = 'none');
+viewerDownload.addEventListener('click', downloadImage);
 viewer.addEventListener('click', (e) => { if(e.target === viewer) viewer.style.display = 'none'; });
 
 document.getElementById('profile-btn').addEventListener('click', () => window.location.href = '/profil.html?from=group');
