@@ -26,7 +26,7 @@ if (SpeechRecognition) {
 
     let recInterval;
     let seconds = 0;
-    let audioContext, analyser, dataArray, source, animationId;
+    let audioContext, analyser, dataArray, source, animationId, currentStream;
     let lastDrawTime = 0;
     let heightsBuffer = []; // Stocker les hauteurs pour l'envoi
     const waveform = document.getElementById('waveform');
@@ -39,6 +39,7 @@ if (SpeechRecognition) {
     async function initVisualizer() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            currentStream = stream;
             
             // Déterminer le type MIME supporté (WebM pour Android/PC, MP4 pour iOS)
             const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
@@ -128,6 +129,10 @@ if (SpeechRecognition) {
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
             mediaRecorder.stop();
         }
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+            currentStream = null;
+        }
     }
 
     function startTimer() {
@@ -163,6 +168,7 @@ if (SpeechRecognition) {
         recordingContainer.classList.remove('active');
         stopTimer();
         stopVisualizer();
+        try { recognition.stop(); } catch(e) {}
     }
 
     sendRecBtn.addEventListener('click', () => {
@@ -452,15 +458,6 @@ function renderMessage(msg, shouldScroll = true) {
     const avatar = document.createElement('div');
     avatar.className = 'message-avatar';
     
-    // Pour les vocaux, on gère l'avatar différemment
-    if (msg.audio) {
-        if (isConsecutive) {
-            avatar.style.display = 'none'; // Cache complètement l'avatar externe si consécutif
-        } else {
-            avatar.style.visibility = 'hidden'; // Garde l'espace pour l'avatar externe
-        }
-    }
-
     if (isConsecutive) {
         avatar.style.visibility = 'hidden';
         if (isMe) avatar.style.width = '0';
@@ -506,24 +503,6 @@ function renderMessage(msg, shouldScroll = true) {
             const audioWrapper = document.createElement('div');
             audioWrapper.className = 'audio-message';
             
-            // Avatar à l'intérieur pour les messages reçus (uniquement si non consécutif)
-            if (!isMe && !isConsecutive) {
-                const innerAvatar = document.createElement('div');
-                innerAvatar.className = 'audio-inner-avatar';
-                if (msg.image) {
-                    innerAvatar.innerHTML = `<img src="${msg.image}">`;
-                } else {
-                    innerAvatar.textContent = msg.username.charAt(0).toUpperCase();
-                    innerAvatar.style.backgroundColor = getColorForUser(msg.username);
-                    innerAvatar.style.color = 'white';
-                }
-                audioWrapper.appendChild(innerAvatar);
-            } else if (!isMe && isConsecutive) {
-                // Pour les messages consécutifs sans avatar, on ajoute un padding pour ne pas coller à la bordure
-                // et rester aligné avec le message au-dessus qui a un avatar
-                audioWrapper.style.marginLeft = '40px'; 
-            }
-
             const playBtn = document.createElement('button');
             playBtn.className = 'audio-play-btn';
             playBtn.innerHTML = '<i data-lucide="play"></i>';
@@ -532,37 +511,38 @@ function renderMessage(msg, shouldScroll = true) {
             let isPlaying = false;
             
             playBtn.onclick = () => {
-                // Sur mobile, l'audio peut nécessiter d'être chargé/débloqué
                 if (audioElem.paused) {
+                    audioElem.currentTime = 0;
                     audioElem.play().catch(err => {
                         console.error("Playback error:", err);
-                        // Essai de secours : re-chargement
                         audioElem.load();
-                        audioElem.play();
+                        setTimeout(() => {
+                            audioElem.currentTime = 0;
+                            audioElem.play();
+                        }, 100);
                     });
                 } else {
                     audioElem.pause();
-                    audioElem.currentTime = 0; // Recommence au début si on coupe
+                    audioElem.currentTime = 0; // Reset à zéro quand on clique sur pause
                 }
             };
             
             audioElem.onplay = () => {
-                isPlaying = true;
                 playBtn.innerHTML = '<i data-lucide="pause"></i>';
                 waveContainer.classList.add('playing');
                 lucide.createIcons();
             };
+            
             audioElem.onpause = () => {
-                isPlaying = false;
                 playBtn.innerHTML = '<i data-lucide="play"></i>';
                 waveContainer.classList.remove('playing');
-                // Réinitialiser les couleurs des barres
+                // Reset visuel des barres
                 const bars = waveContainer.querySelectorAll('.static-wave-bar');
                 bars.forEach(b => b.style.background = '#90a4ae');
                 lucide.createIcons();
             };
+
             audioElem.onended = () => {
-                isPlaying = false;
                 audioElem.currentTime = 0;
                 playBtn.innerHTML = '<i data-lucide="play"></i>';
                 waveContainer.classList.remove('playing');
