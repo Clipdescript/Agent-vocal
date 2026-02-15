@@ -132,16 +132,14 @@ function updatePreview() {
         avatarContent.innerHTML = `<img src="${currentGroupData.image}">`;
         avatarContent.style.backgroundColor = 'transparent';
     } else {
-        avatarContent.innerHTML = "";
-        const nameForAvatar = nameInput.value.trim() || currentGroupData.name || "G";
-        avatarContent.textContent = nameForAvatar.charAt(0).toUpperCase();
-        avatarContent.style.backgroundColor = getColorForUser(nameForAvatar);
-        avatarContent.style.color = 'white';
+        avatarContent.innerHTML = "💬";
+        avatarContent.style.backgroundColor = 'white';
         avatarContent.style.display = 'flex';
         avatarContent.style.alignItems = 'center';
         avatarContent.style.justifyContent = 'center';
         avatarContent.style.width = '100%';
         avatarContent.style.height = '100%';
+        avatarContent.style.fontSize = '48px';
     }
     checkChanges();
 }
