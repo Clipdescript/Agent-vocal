@@ -46,7 +46,6 @@ if (profileBtn) {
 
 const descInput = document.getElementById('group-desc-input');
 const imageInput = document.getElementById('image-input');
-const saveBtn = document.getElementById('group-save');
 const deleteChatBtn = document.getElementById('delete-chat-btn');
 const confirmModal = document.getElementById('confirm-modal');
 const modalYes = document.getElementById('modal-yes');
@@ -96,6 +95,13 @@ modalYes.addEventListener('click', () => {
 
 const avatarBig = document.getElementById('group-avatar-big');
 const avatarContent = document.getElementById('avatar-content');
+const bottomSheet = document.getElementById('bottom-sheet');
+const cameraInput = document.getElementById('camera-input');
+const btnTakePhoto = document.getElementById('btn-take-photo');
+const btnChoosePhoto = document.getElementById('btn-choose-photo');
+const btnDeletePhoto = document.getElementById('btn-delete-photo');
+const closeSheet = document.getElementById('close-sheet');
+const sheetOverlay = document.getElementById('sheet-overlay');
 
 let currentGroupData = {
     name: "Général",
@@ -128,47 +134,69 @@ function updatePreview() {
 }
 
 function checkChanges() {
-    const hasChanges = nameInput.value !== currentGroupData.name || 
-                       descInput.value !== currentGroupData.description;
-    saveBtn.disabled = !hasChanges;
-    saveBtn.classList.toggle('disabled', !hasChanges);
+    const newData = {
+        name: nameInput.value.trim(),
+        description: descInput.value.trim()
+    };
+    
+    // On n'enregistre que si le nom n'est pas vide
+    if (newData.name && (newData.name !== currentGroupData.name || newData.description !== currentGroupData.description)) {
+        socket.emit('update group info', newData);
+        // On met à jour localement pour éviter les boucles d'envoi si le serveur renvoie l'info
+        currentGroupData.name = newData.name;
+        currentGroupData.description = newData.description;
+    }
 }
 
 nameInput.addEventListener('input', checkChanges);
 descInput.addEventListener('input', checkChanges);
 
-avatarBig.addEventListener('click', () => imageInput.click());
-document.getElementById('camera-badge').addEventListener('click', () => imageInput.click());
+function openBottomSheet() {
+    bottomSheet.classList.add('active');
+    // Afficher le bouton supprimer si une image existe
+    btnDeletePhoto.style.display = currentGroupData.image ? 'flex' : 'none';
+}
 
-imageInput.addEventListener('change', (e) => {
+function closeBottomSheet() {
+    bottomSheet.classList.remove('active');
+}
+
+avatarBig.addEventListener('click', openBottomSheet);
+document.getElementById('camera-badge').addEventListener('click', openBottomSheet);
+closeSheet.addEventListener('click', closeBottomSheet);
+sheetOverlay.addEventListener('click', closeBottomSheet);
+
+btnTakePhoto.addEventListener('click', () => {
+    cameraInput.click();
+});
+
+btnChoosePhoto.addEventListener('click', () => {
+    imageInput.click();
+});
+
+btnDeletePhoto.addEventListener('click', () => {
+    if (confirm("Supprimer l'image du groupe ?")) {
+        currentGroupData.image = null;
+        updatePreview();
+        socket.emit('update group info', { image: null });
+    }
+});
+
+function handleFileSelect(e) {
     const file = e.target.files[0];
     if (file) {
         const reader = new FileReader();
         reader.onload = (ev) => {
             currentGroupData.image = ev.target.result;
             updatePreview();
-            // On sauvegarde l'image immédiatement comme pour le profil perso
             socket.emit('update group info', { image: currentGroupData.image });
         };
         reader.readAsDataURL(file);
     }
-});
+}
 
-saveBtn.addEventListener('click', () => {
-    const newData = {
-        name: nameInput.value.trim(),
-        description: descInput.value.trim()
-    };
-    if (newData.name) {
-        socket.emit('update group info', newData);
-        saveBtn.disabled = true;
-        saveBtn.classList.add('disabled');
-        saveBtn.textContent = "Enregistré !";
-        setTimeout(() => {
-            saveBtn.textContent = "Enregistrer les modifications";
-        }, 2000);
-    }
-});
+imageInput.addEventListener('change', handleFileSelect);
+cameraInput.addEventListener('change', handleFileSelect);
 
 backBtn.addEventListener('click', () => {
     window.location.href = '/Groupe.html';

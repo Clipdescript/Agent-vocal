@@ -46,9 +46,10 @@
         </div>
 
         <input type="file" id="image-input" accept="image/*" style="display: none;">
+        <input type="file" id="camera-input" accept="image/*" capture="user" style="display: none;">
 
         <div class="save-section">
-            <button id="group-save" class="btn-success disabled" disabled>
+            <button id="group-save" class="btn-success disabled" style="display: none;">
                 <span>Enregistrer les modifications</span>
             </button>
             <button id="delete-chat-btn" class="btn-danger disabled" disabled>
@@ -56,6 +57,33 @@
             </button>
         </div>
     </main>
+
+    <div id="bottom-sheet" class="bottom-sheet">
+        <div class="bottom-sheet-overlay" id="sheet-overlay"></div>
+        <div class="bottom-sheet-content">
+            <button id="close-sheet" class="close-sheet-btn">
+                <i data-lucide="x"></i>
+            </button>
+            <div class="sheet-handle"></div>
+            <div class="sheet-header">
+                <h3>Modifier la photo du groupe</h3>
+            </div>
+            <div class="sheet-body">
+                <button class="sheet-option" id="btn-take-photo">
+                    <span>Prendre une photo</span>
+                    <i data-lucide="camera"></i>
+                </button>
+                <button class="sheet-option" id="btn-choose-photo">
+                    <span>Choisir une photo</span>
+                    <i data-lucide="image"></i>
+                </button>
+                <button class="sheet-option btn-sheet-danger" id="btn-delete-photo" style="display: none;">
+                    <span>Supprimer la photo</span>
+                    <i data-lucide="trash-2"></i>
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal de confirmation -->
     <div id="confirm-modal" class="modal-overlay">
