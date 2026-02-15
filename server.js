@@ -140,12 +140,20 @@ io.on('connection', (socket) => {
         });
     });
 
-    socket.on('typing', (username) => {
-        socket.broadcast.emit('user typing', username);
+    socket.on('typing', (data) => {
+        socket.broadcast.emit('user typing', data);
+    });
+
+    socket.on('recording', (data) => {
+        socket.broadcast.emit('user recording', data);
     });
 
     socket.on('stop typing', () => {
         socket.broadcast.emit('user stop typing');
+    });
+
+    socket.on('stop recording', () => {
+        socket.broadcast.emit('user stop recording');
     });
 
     socket.on('update profile', (data) => {

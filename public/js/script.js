@@ -197,6 +197,9 @@ if (SpeechRecognition) {
         recordingContainer.classList.add('active');
         startTimer();
         initVisualizer();
+        if (currentUsername) {
+            socket.emit('recording', { username: currentUsername, image: userImage });
+        }
     }
 
     function hideRecordingUI() {
@@ -208,6 +211,7 @@ if (SpeechRecognition) {
         stopTimer();
         stopVisualizer();
         try { recognition.stop(); } catch(e) {}
+        socket.emit('stop recording');
     }
 
     sendRecBtn.addEventListener('click', () => {
@@ -360,14 +364,75 @@ updateHeaderAvatar();
 let typingTimeout;
 input.addEventListener('input', () => {
     if (currentUsername) {
-        socket.emit('typing', currentUsername);
+        socket.emit('typing', { username: currentUsername, image: userImage });
         clearTimeout(typingTimeout);
         typingTimeout = setTimeout(() => socket.emit('stop typing'), 2000);
     }
 });
 
-socket.on('user typing', (user) => { typingIndicator.textContent = `${user} écrit...`; });
-socket.on('user stop typing', () => { typingIndicator.textContent = ''; });
+socket.on('user typing', (data) => {
+    const { username, image } = data;
+    
+    let avatarContent = '';
+    if (image) {
+        avatarContent = `<img src="${image}" alt="${username}">`;
+    } else {
+        avatarContent = username.charAt(0).toUpperCase();
+    }
+
+    typingIndicator.innerHTML = `
+        <div class="typing-avatar" style="background-color: ${image ? 'transparent' : getColorForUser(username)}">
+            ${avatarContent}
+        </div>
+        <div class="typing-bubble">
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+        </div>
+    `;
+    typingIndicator.classList.add('active');
+    
+    // Auto scroll to bottom if we are near it
+    if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) {
+        window.scrollTo(0, document.body.scrollHeight);
+    }
+});
+
+socket.on('user stop typing', () => {
+    typingIndicator.classList.remove('active');
+    typingIndicator.innerHTML = '';
+});
+
+socket.on('user recording', (data) => {
+    const { username, image } = data;
+    
+    let avatarContent = '';
+    if (image) {
+        avatarContent = `<img src="${image}" alt="${username}">`;
+    } else {
+        avatarContent = username.charAt(0).toUpperCase();
+    }
+
+    typingIndicator.innerHTML = `
+        <div class="typing-avatar" style="background-color: ${image ? 'transparent' : getColorForUser(username)}">
+            ${avatarContent}
+        </div>
+        <div class="typing-bubble">
+            <i data-lucide="mic" style="width: 20px; height: 20px; color: #555;"></i>
+        </div>
+    `;
+    typingIndicator.classList.add('active');
+    lucide.createIcons();
+    
+    if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) {
+        window.scrollTo(0, document.body.scrollHeight);
+    }
+});
+
+socket.on('user stop recording', () => {
+    typingIndicator.classList.remove('active');
+    typingIndicator.innerHTML = '';
+});
 
 socket.on('profile updated', (data) => {
     if (data.userId === userId) {
