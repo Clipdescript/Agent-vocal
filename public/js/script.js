@@ -38,8 +38,11 @@ if (SpeechRecognition) {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             
+            // Déterminer le type MIME supporté (WebM pour Android/PC, MP4 pour iOS)
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
+            
             // Initialisation MediaRecorder pour le vrai audio
-            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder = new MediaRecorder(stream, { mimeType });
             audioChunks = [];
             heightsBuffer = [];
             window.isRecordingVoice = true;
@@ -50,7 +53,7 @@ if (SpeechRecognition) {
             };
 
             mediaRecorder.onstop = async () => {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const audioBlob = new Blob(audioChunks, { type: mimeType });
                 const reader = new FileReader();
                 reader.onload = () => {
                     const base64Audio = reader.result;
@@ -70,6 +73,10 @@ if (SpeechRecognition) {
             mediaRecorder.start();
 
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioContext.state === 'suspended') {
+                await audioContext.resume();
+            }
+            
             analyser = audioContext.createAnalyser();
             source = audioContext.createMediaStreamSource(stream);
             source.connect(analyser);
@@ -505,11 +512,17 @@ function renderMessage(msg, shouldScroll = true) {
             let isPlaying = false;
             
             playBtn.onclick = () => {
-                if (isPlaying) {
+                // Sur mobile, l'audio peut nécessiter d'être chargé/débloqué
+                if (audioElem.paused) {
+                    audioElem.play().catch(err => {
+                        console.error("Playback error:", err);
+                        // Essai de secours : re-chargement
+                        audioElem.load();
+                        audioElem.play();
+                    });
+                } else {
                     audioElem.pause();
                     audioElem.currentTime = 0; // Recommence au début si on coupe
-                } else {
-                    audioElem.play();
                 }
             };
             
