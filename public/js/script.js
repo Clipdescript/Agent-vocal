@@ -687,7 +687,10 @@ function renderMessage(msg, shouldScroll = true) {
         name.className = 'username';
         name.textContent = msg.username;
         name.style.color = getColorForUser(msg.username);
-        name.onclick = () => window.location.href = `/profil.html?userId=${msg.userId}&from=group`;
+        name.onclick = (e) => {
+            e.stopPropagation();
+            window.location.href = `/profil.html?userId=${msg.userId}&from=group`;
+        };
         content.appendChild(name);
     }
 

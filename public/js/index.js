@@ -54,6 +54,31 @@ usernameSubmit.addEventListener('click', () => {
     }
 });
 
+// Group Info logic
+const groupNameElem = document.getElementById('group-name');
+const groupDescElem = document.getElementById('group-desc');
+const groupAvatarElem = document.getElementById('group-avatar');
+
+function updateGroupUI(data) {
+    if (data) {
+        if (groupNameElem) groupNameElem.textContent = data.name;
+        if (groupDescElem) groupDescElem.textContent = data.description;
+        if (groupAvatarElem) {
+            if (data.image) {
+                groupAvatarElem.innerHTML = `<img src="${data.image}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+                groupAvatarElem.style.backgroundColor = 'transparent';
+            } else {
+                groupAvatarElem.innerHTML = "💬";
+                groupAvatarElem.style.backgroundColor = '';
+            }
+        }
+    }
+}
+
+socket.emit('get group info');
+socket.on('group info', updateGroupUI);
+socket.on('group info updated', updateGroupUI);
+
 document.getElementById('profile-btn').addEventListener('click', () => {
     window.location.href = '/profil.html';
 });
