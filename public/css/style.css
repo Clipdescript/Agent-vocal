@@ -16,11 +16,14 @@ header {
 .header-left { 
     display: flex; 
     align-items: center; 
+    justify-content: center;
     gap: 10px;
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
     white-space: nowrap;
+    width: auto;
+    max-width: 60%;
 }
 #back-btn {
     position: absolute;
@@ -42,7 +45,13 @@ header {
     display: flex; align-items: center; justify-content: center; font-size: 18px;
     overflow: hidden;
 }
-.logo { font-weight: normal; font-size: 18px; }
+.logo { 
+    font-weight: normal; 
+    font-size: 18px; 
+    max-width: 150px; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+}
 #profile-btn, #clear-btn, #visio-btn {
     background: none; border: none; color: #075e54; cursor: pointer;
     display: flex; align-items: center; justify-content: center; opacity: 0.9;
@@ -512,7 +521,7 @@ header {
 @media (max-width: 600px) {
     .logo { font-size: 16px; }
     .header-buttons { gap: 8px; }
-    #messages { padding: 10px; }
+    #messages { padding: 10px 10px 120px 10px; }
     .message-main { max-width: 85%; }
     #input { font-size: 15px; }
     .message-img { max-height: 180px; }

@@ -730,6 +730,8 @@ function renderMessage(msg, shouldScroll = true) {
             e.stopPropagation();
             window.location.href = `/profil.html?userId=${msg.userId}&from=group`;
         };
+        name.onmousedown = (e) => e.stopPropagation();
+        name.ontouchstart = (e) => e.stopPropagation();
         content.appendChild(name);
     }
 
