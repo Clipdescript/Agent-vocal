@@ -247,6 +247,35 @@ if (backBtn) {
     });
 }
 
+const groupHeaderInfo = document.getElementById('group-header-info');
+if (groupHeaderInfo) {
+    groupHeaderInfo.addEventListener('click', (e) => {
+        if (e.target.closest('#back-btn')) return;
+        window.location.href = '/groupe-profil.html';
+    });
+}
+
+socket.emit('get group info');
+socket.on('group info', (data) => {
+    if (data) {
+        const nameElem = document.getElementById('header-group-name');
+        const avatarElem = document.getElementById('header-group-avatar');
+        if (nameElem) nameElem.textContent = data.name;
+        if (avatarElem && data.image) {
+            avatarElem.innerHTML = `<img src="${data.image}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+        }
+    }
+});
+
+socket.on('group info updated', (data) => {
+    const nameElem = document.getElementById('header-group-name');
+    const avatarElem = document.getElementById('header-group-avatar');
+    if (nameElem) nameElem.textContent = data.name;
+    if (avatarElem && data.image) {
+        avatarElem.innerHTML = `<img src="${data.image}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+    }
+});
+
 const softColors = [
     '#3498db', '#2ecc71', '#e74c3c', '#9b59b6', '#1abc9c', 
     '#e67e22', '#3f51b5', '#e91e63', '#00bcd4', '#27ae60', 
@@ -395,7 +424,7 @@ document.getElementById('modal-yes').addEventListener('click', () => {
     modal.style.display = 'none';
 });
 
-document.getElementById('profile-btn').addEventListener('click', () => window.location.href = '/profil.html');
+document.getElementById('profile-btn').addEventListener('click', () => window.location.href = '/profil.html?from=group');
 
 document.getElementById('visio-btn').addEventListener('click', () => {
     if (currentUsername) {

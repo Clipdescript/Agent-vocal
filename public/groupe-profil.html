@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Profil du Groupe</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="stylesheet" href="/css/profil.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <header>
+        <button id="back-btn" title="Retour">
+            <i data-lucide="chevron-left"></i>
+        </button>
+        <span class="header-title">Infos du Groupe</span>
+        <div class="header-buttons">
+            <button id="profile-btn" title="Mon Profil"><div id="profile-avatar"></div></button>
+        </div>
+    </header>
+
+    <main class="profil-container">
+        <div class="avatar-preview-section">
+            <div class="avatar-wrapper">
+                <div id="group-avatar-big" class="clickable-avatar">
+                    <div class="avatar-content" id="avatar-content">💬</div>
+                    <div class="camera-overlay">
+                        <i data-lucide="camera"></i>
+                    </div>
+                </div>
+                <div class="camera-badge" id="camera-badge">
+                    <i data-lucide="camera"></i>
+                </div>
+            </div>
+            <p class="profile-modifier-text">Modifier l'image</p>
+        </div>
+
+        <div class="form-group">
+            <label for="group-name-input">Nom du groupe :</label>
+            <input type="text" id="group-name-input" placeholder="Nom du groupe..." autocomplete="off">
+        </div>
+
+        <div class="form-group">
+            <label for="group-desc-input">Description :</label>
+            <input type="text" id="group-desc-input" placeholder="Ajouter une description..." autocomplete="off">
+        </div>
+
+        <input type="file" id="image-input" accept="image/*" style="display: none;">
+
+        <div class="save-section">
+            <button id="group-save" class="btn-success disabled" disabled>
+                <span>Enregistrer les modifications</span>
+            </button>
+        </div>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/groupe-profil.js"></script>
+</body>
+</html>

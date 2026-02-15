@@ -58,6 +58,21 @@ db.serialize(() => {
         audioDuration TEXT
     )`);
 
+    db.run(`CREATE TABLE IF NOT EXISTS group_info (
+        id INTEGER PRIMARY KEY,
+        name TEXT,
+        image TEXT,
+        description TEXT
+    )`);
+
+    db.get("SELECT * FROM group_info WHERE id = 1", (err, row) => {
+        if (err) console.error("Error checking group_info:", err.message);
+        if (!row) {
+            console.log("Initializing group_info table...");
+            db.run("INSERT INTO group_info (id, name, description) VALUES (1, 'Général', 'Bienvenue dans le groupe général !')");
+        }
+    });
+
     // Migrations de secours pour les bases existantes
     const migrations = [
         { name: 'audio', type: 'TEXT' },
@@ -144,6 +159,31 @@ io.on('connection', (socket) => {
             if (!err) {
                 io.emit('messages cleared');
             }
+        });
+    });
+
+    socket.on('get group info', () => {
+        db.get("SELECT * FROM group_info WHERE id = 1", (err, row) => {
+            if (err) {
+                console.error("Error getting group info:", err.message);
+                socket.emit('group info', { name: "Général", description: "Bienvenue dans le groupe général !" });
+            } else {
+                socket.emit('group info', row || { name: "Général", description: "Bienvenue dans le groupe général !" });
+            }
+        });
+    });
+
+    socket.on('update group info', (data) => {
+        db.get("SELECT * FROM group_info WHERE id = 1", (err, row) => {
+            const name = data.name !== undefined ? data.name : row.name;
+            const image = data.image !== undefined ? data.image : row.image;
+            const description = data.description !== undefined ? data.description : row.description;
+            
+            db.run("UPDATE group_info SET name = ?, image = ?, description = ? WHERE id = 1", [name, image, description], (err) => {
+                if (!err) {
+                    io.emit('group info updated', { name, image, description });
+                }
+            });
         });
     });
 

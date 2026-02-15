@@ -16,18 +16,19 @@ body {
 header {
     background: white;
     color: #075e54;
-    padding: 8px 15px;
+    padding: 10px 15px;
     display: flex;
     align-items: center;
-    justify-content: center; /* Centre le titre */
+    justify-content: center;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     position: relative;
-    height: 50px; /* Hauteur fixe pour correspondre au chat */
+    height: 50px;
 }
 
 .header-title {
     font-weight: normal;
     font-size: 18px;
+    text-align: center;
 }
 
 #back-btn {
@@ -41,6 +42,41 @@ header {
     padding: 5px;
     position: absolute;
     left: 10px;
+}
+
+.header-buttons {
+    position: absolute;
+    right: 10px;
+    display: flex;
+    align-items: center;
+}
+
+#profile-btn {
+    background: none;
+    border: none;
+    color: #075e54;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#profile-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #ddd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-size: 14px;
+}
+
+#profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 #back-btn .lucide {
@@ -68,7 +104,7 @@ header {
     margin-bottom: 15px;
 }
 
-#profil-avatar-big {
+#profil-avatar-big, #group-avatar-big {
     width: 120px;
     height: 120px;
     border-radius: 50%;
@@ -90,8 +126,8 @@ header {
     position: absolute;
     bottom: 0;
     right: 0;
-    background: #78e08f;
-    color: white;
+    background: #f0f2f5;
+    color: #555;
     width: 36px;
     height: 36px;
     border-radius: 50%;
@@ -138,7 +174,7 @@ header {
     color: white;
 }
 
-#profil-avatar-big:hover .camera-overlay {
+#profil-avatar-big:hover .camera-overlay, #group-avatar-big:hover .camera-overlay {
     opacity: 1;
 }
 
@@ -171,7 +207,7 @@ header {
     color: #666;
 }
 
-#profile-input, #profile-info-input, #profile-status-input {
+#profile-input, #profile-info-input, #profile-status-input, #group-name-input, #group-desc-input {
     width: 100%;
     padding: 12px;
     border: 1px solid #ddd;
@@ -180,7 +216,7 @@ header {
     outline: none;
 }
 
-#profile-input:focus, #profile-info-input:focus, #profile-status-input:focus {
+#profile-input:focus, #profile-info-input:focus, #profile-status-input:focus, #group-name-input:focus, #group-desc-input:focus {
     border-color: #075e54;
 }
 

@@ -167,9 +167,17 @@ function hideBottomSheet() {
     document.body.style.overflow = '';
 }
 
-backBtn.addEventListener('click', () => {
-    window.location.href = '/';
-});
+const fromParam = urlParams.get('from');
+
+function goBack() {
+    if (fromParam === 'group') {
+        window.location.href = '/Groupe.html';
+    } else {
+        window.location.href = '/';
+    }
+}
+
+backBtn.addEventListener('click', goBack);
 
 // Cliquer sur l'avatar ouvre le menu du bas
 profileAvatarBig.addEventListener('click', () => {
@@ -288,6 +296,4 @@ profileSave.addEventListener('click', () => {
     }, 1500);
 });
 
-profileQuit.addEventListener('click', () => {
-    window.location.href = '/';
-});
+profileQuit.addEventListener('click', goBack);
