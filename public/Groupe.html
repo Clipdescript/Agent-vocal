@@ -23,7 +23,6 @@
         </div>
         <div class="header-buttons">
             <button id="visio-btn" title="Appel Vidéo"><i data-lucide="video"></i></button>
-            <button id="clear-btn" title="Effacer"><i data-lucide="trash-2"></i></button>
             <button id="profile-btn" title="Mon Profil"><div id="profile-avatar"></div></button>
         </div>
     </header>
@@ -47,7 +46,7 @@
             <button id="mic-btn" type="button" class="action-circle-btn"><i data-lucide="mic"></i></button>
 
             <div id="recording-container" style="display: none;">
-                <button id="delete-rec-btn" type="button" class="rec-action-btn"><i data-lucide="trash-2"></i></button>
+                <button id="delete-rec-btn" type="button" class="rec-action-btn"><i data-lucide="x"></i></button>
                 <div id="recording-info">
                     <span id="recording-timer">0:00</span>
                     <div id="waveform">
@@ -60,18 +59,6 @@
             
         </div>
     </form>
-
-    <!-- Modal de confirmation -->
-    <div id="confirm-modal" class="modal-overlay">
-        <div class="modal-box">
-            <h3>Supprimer l'historique ?</h3>
-            <p>Cette action est irréversible pour votre affichage local.</p>
-            <div class="modal-buttons">
-                <button id="modal-no" class="btn-secondary">Annuler</button>
-                <button id="modal-yes" class="btn-danger">Confirmer</button>
-            </div>
-        </div>
-    </div>
 
     <input type="file" id="message-image-input" accept="image/*" style="display: none;">
 

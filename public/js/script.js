@@ -413,17 +413,6 @@ function openLightbox(src) {
 viewerClose.addEventListener('click', () => viewer.style.display = 'none');
 viewer.addEventListener('click', (e) => { if(e.target === viewer) viewer.style.display = 'none'; });
 
-// Modals
-const clearBtn = document.getElementById('clear-btn');
-const modal = document.getElementById('confirm-modal');
-clearBtn.addEventListener('click', () => modal.style.display = 'flex');
-document.getElementById('modal-no').addEventListener('click', () => modal.style.display = 'none');
-document.getElementById('modal-yes').addEventListener('click', () => {
-    localStorage.setItem('chat-last-clear', Date.now());
-    messages.innerHTML = '';
-    modal.style.display = 'none';
-});
-
 document.getElementById('profile-btn').addEventListener('click', () => window.location.href = '/profil.html?from=group');
 
 document.getElementById('visio-btn').addEventListener('click', () => {

@@ -162,6 +162,13 @@ io.on('connection', (socket) => {
         });
     });
 
+    socket.on('check messages exist', (data) => {
+        const lastClear = data ? (data.lastClear || 0) : 0;
+        db.get("SELECT COUNT(*) as count FROM messages WHERE timestamp > ?", [lastClear], (err, row) => {
+            socket.emit('messages existence', { exists: row && row.count > 0 });
+        });
+    });
+
     socket.on('get group info', () => {
         db.get("SELECT * FROM group_info WHERE id = 1", (err, row) => {
             if (err) {

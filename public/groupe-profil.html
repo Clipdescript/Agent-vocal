@@ -51,8 +51,23 @@
             <button id="group-save" class="btn-success disabled" disabled>
                 <span>Enregistrer les modifications</span>
             </button>
+            <button id="delete-chat-btn" class="btn-danger disabled" disabled>
+                Supprimer la discussion pour toi
+            </button>
         </div>
     </main>
+
+    <!-- Modal de confirmation -->
+    <div id="confirm-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h3>Supprimer la discussion ?</h3>
+            <p>Cette action est irréversible pour votre affichage local.</p>
+            <div class="modal-buttons">
+                <button id="modal-no" class="btn-secondary">Annuler</button>
+                <button id="modal-yes" class="btn-danger">Confirmer</button>
+            </div>
+        </div>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/groupe-profil.js"></script>

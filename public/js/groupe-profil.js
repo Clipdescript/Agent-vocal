@@ -47,6 +47,53 @@ if (profileBtn) {
 const descInput = document.getElementById('group-desc-input');
 const imageInput = document.getElementById('image-input');
 const saveBtn = document.getElementById('group-save');
+const deleteChatBtn = document.getElementById('delete-chat-btn');
+const confirmModal = document.getElementById('confirm-modal');
+const modalYes = document.getElementById('modal-yes');
+const modalNo = document.getElementById('modal-no');
+
+// Fonction pour vérifier l'existence des messages
+function checkMessages() {
+    const lastClear = localStorage.getItem('chat-last-clear') || "0";
+    socket.emit('check messages exist', { lastClear: parseInt(lastClear) });
+}
+
+// Vérifier au chargement et lors de la connexion
+socket.on('connect', checkMessages);
+checkMessages();
+
+// Mettre à jour en temps réel si un message est reçu (pour réactiver le bouton)
+socket.on('chat message', checkMessages);
+
+// Mettre à jour si la discussion est vidée globalement
+socket.on('messages cleared', checkMessages);
+
+socket.on('messages existence', (data) => {
+    if (data.exists) {
+        deleteChatBtn.disabled = false;
+        deleteChatBtn.classList.remove('disabled');
+    } else {
+        deleteChatBtn.disabled = true;
+        deleteChatBtn.classList.add('disabled');
+    }
+});
+
+deleteChatBtn.addEventListener('click', () => {
+    confirmModal.style.display = 'flex';
+});
+
+modalNo.addEventListener('click', () => {
+    confirmModal.style.display = 'none';
+});
+
+modalYes.addEventListener('click', () => {
+    localStorage.setItem('chat-last-clear', Date.now().toString());
+    confirmModal.style.display = 'none';
+    deleteChatBtn.disabled = true;
+    deleteChatBtn.classList.add('disabled');
+    alert("La discussion a été effacée pour vous.");
+});
+
 const avatarBig = document.getElementById('group-avatar-big');
 const avatarContent = document.getElementById('avatar-content');
 
