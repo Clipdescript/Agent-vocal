@@ -606,6 +606,27 @@ function showContextMenu(e, msgId, isMe, messageElement) {
         right: rect.right
     };
 
+    // Vérifier si l'utilisateur a déjà réagi pour griser l'émoji dans le menu
+    const msgs = getLocalMessages();
+    const currentMsg = msgs.find(m => m.timestamp == msgId);
+    let myEmoji = null;
+    if (currentMsg && currentMsg.reactions) {
+        try {
+            const reactions = JSON.parse(currentMsg.reactions);
+            const found = reactions.find(r => r.userId === userId);
+            if (found) myEmoji = found.emoji;
+        } catch(e) {}
+    }
+
+    // Réinitialiser les états grisé du menu
+    reactionBar.querySelectorAll('span').forEach(span => {
+        if (span.textContent === myEmoji) {
+            span.classList.add('selected');
+        } else {
+            span.classList.remove('selected');
+        }
+    });
+
     // Vérifier si une réaction existe déjà pour décaler le menu vers le bas
     const hasReaction = messageElement.querySelector('.message-reactions');
     const offset = hasReaction ? 25 : 10;
@@ -691,37 +712,52 @@ document.addEventListener('touchstart', (e) => {
 contextMenu.querySelector('.reaction-bar').addEventListener('click', (e) => {
     if (e.target.tagName === 'SPAN') {
         const emoji = e.target.textContent;
-        socket.emit('message reaction', { timestamp: selectedMessageId, emoji: emoji });
+        socket.emit('message reaction', { timestamp: selectedMessageId, emoji: emoji, userId: userId });
         hideContextMenu();
     }
 });
 
 socket.on('message reaction updated', (data) => {
     const { timestamp, reactions } = data;
+    
+    // Update LocalStorage
+    let msgs = getLocalMessages();
+    const msgIndex = msgs.findIndex(m => m.timestamp == timestamp);
+    if (msgIndex !== -1) {
+        msgs[msgIndex].reactions = JSON.stringify(reactions);
+        saveLocalMessages(msgs);
+    }
+
     const messageLi = Array.from(messages.querySelectorAll('li')).find(li => {
         return li.dataset.timestamp == timestamp;
     });
     
     if (messageLi) {
-        const main = messageLi.querySelector('.message-main');
-        let reactionsDiv = main.querySelector('.message-reactions');
-        
-        if (reactions && reactions.length > 0) {
-            if (!reactionsDiv) {
-                reactionsDiv = document.createElement('div');
-                reactionsDiv.className = 'message-reactions';
-                main.appendChild(reactionsDiv);
-            }
-            // Group identical reactions or just show unique ones?
-            // User asked for "multiple emojis even 2 3 etc"
-            // We'll show unique emojis and if needed a counter, but simple approach first
-            const uniqueReactions = [...new Set(reactions)];
-            reactionsDiv.textContent = uniqueReactions.join('');
-        } else if (reactionsDiv) {
-            reactionsDiv.remove();
-        }
+        updateReactionsUI(messageLi, reactions);
     }
 });
+
+function updateReactionsUI(li, reactions) {
+    const main = li.querySelector('.message-main');
+    let reactionsDiv = main.querySelector('.message-reactions');
+    
+    if (reactions && reactions.length > 0) {
+        if (!reactionsDiv) {
+            reactionsDiv = document.createElement('div');
+            reactionsDiv.className = 'message-reactions';
+            main.appendChild(reactionsDiv);
+        }
+        
+        // Gérer le cas où reactions est un tableau d'objets ou de strings
+        const normalizedReactions = reactions.map(r => typeof r === 'string' ? {emoji: r} : r);
+        
+        // On groupe les émojis uniques pour l'affichage
+        const uniqueEmojis = [...new Set(normalizedReactions.map(r => r.emoji))];
+        reactionsDiv.textContent = uniqueEmojis.join('');
+    } else if (reactionsDiv) {
+        reactionsDiv.remove();
+    }
+}
 
 function openReplyPreview(username, text, timestamp) {
     replyingTo = { username, text, timestamp };
@@ -1019,13 +1055,7 @@ function renderMessage(msg, shouldScroll = true) {
     if (msg.reactions) {
         try {
             const reactions = JSON.parse(msg.reactions);
-            if (reactions && reactions.length > 0) {
-                const reactionsDiv = document.createElement('div');
-                reactionsDiv.className = 'message-reactions';
-                const uniqueReactions = [...new Set(reactions)];
-                reactionsDiv.textContent = uniqueReactions.join('');
-                main.appendChild(reactionsDiv);
-            }
+            updateReactionsUI(li, reactions);
         } catch(e) {}
     }
 

@@ -126,12 +126,37 @@ io.on('connection', (socket) => {
     });
 
     socket.on('message reaction', (data) => {
-        const { timestamp, emoji } = data;
+        const { timestamp, emoji, userId } = data;
         
         db.get("SELECT reactions FROM messages WHERE timestamp = ?", [timestamp], (err, row) => {
             if (!err && row) {
-                // Replace existing reactions with the new one (limit to one per message)
-                let reactions = [emoji];
+                let reactions = [];
+                try {
+                    reactions = JSON.parse(row.reactions || '[]');
+                } catch(e) { reactions = []; }
+                
+                // Si ce n'est pas un tableau d'objets (ancien format), on reset
+                if (reactions.length > 0 && typeof reactions[0] === 'string') {
+                    reactions = [];
+                }
+
+                // Trouver si l'utilisateur a déjà réagi
+                const index = reactions.findIndex(r => r.userId === userId);
+                if (index !== -1) {
+                    if (reactions[index].emoji === emoji) {
+                        // Si c'est le même émoji, on le retire (Toggle)
+                        reactions.splice(index, 1);
+                    } else {
+                        // Sinon on change l'émoji
+                        reactions[index].emoji = emoji;
+                    }
+                } else {
+                    // Sinon on ajoute la nouvelle réaction
+                    reactions.push({ userId, emoji });
+                }
+                
+                // Limiter à 20 réactions par message
+                if (reactions.length > 20) reactions.shift();
                 
                 const reactionsStr = JSON.stringify(reactions);
                 db.run("UPDATE messages SET reactions = ? WHERE timestamp = ?", [reactionsStr, timestamp], (err) => {
