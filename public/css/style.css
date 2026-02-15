@@ -71,6 +71,8 @@ header {
 #messages li { 
     display: flex; width: 100%; margin-bottom: 2px; align-items: flex-end; gap: 8px; 
     scroll-margin-bottom: 220px;
+    content-visibility: auto;
+    contain-intrinsic-size: 0 40px;
 }
 #messages li.sent { justify-content: flex-end; }
 #messages li.received { justify-content: flex-start; }
@@ -563,11 +565,15 @@ header {
     border-radius: 12px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     display: flex;
+    flex-direction: row;
+    align-items: center;
     gap: 2px;
     font-size: 14px;
     z-index: 10;
     border: 1px solid #f0f2f5;
     animation: popIn 0.2s ease-out;
+    cursor: pointer;
+    line-height: 1;
 }
 #messages li.received .message-reactions {
     left: 8px;
@@ -648,6 +654,58 @@ header {
 .context-menu-list li.danger { color: #ff3b30; }
 .context-menu-list li .lucide { width: 20px; height: 20px; opacity: 0.8; }
 .context-menu-list li.danger .lucide { color: #ff3b30; opacity: 1; }
+
+.reactions-detail-list {
+    background: white;
+    border-radius: 14px;
+    padding: 10px 0;
+    max-height: 250px;
+    overflow-y: auto;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    animation: slideUp 0.2s ease-out;
+}
+
+.reaction-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    border-bottom: 0.5px solid rgba(0,0,0,0.05);
+}
+
+.reaction-item:last-child {
+    border-bottom: none;
+}
+
+.reaction-item-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #f0f2f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: bold;
+    color: white;
+}
+
+.reaction-item-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.reaction-item-name {
+    flex: 1;
+    font-size: 15px;
+    color: #333;
+}
+
+.reaction-item-emoji {
+    font-size: 20px;
+}
 
 @keyframes popIn {
     0% { transform: scale(0.8); opacity: 0; }
