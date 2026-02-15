@@ -127,10 +127,27 @@ socket.on('group info', (data) => {
 function updatePreview() {
     if (currentGroupData.image) {
         avatarContent.innerHTML = `<img src="${currentGroupData.image}">`;
+        avatarContent.style.backgroundColor = 'transparent';
     } else {
-        avatarContent.innerHTML = "💬";
+        avatarContent.innerHTML = "";
+        avatarContent.textContent = (currentGroupData.name.charAt(0) || "G").toUpperCase();
+        avatarContent.style.backgroundColor = getColorForUser(currentGroupData.name);
+        avatarContent.style.color = 'white';
+        avatarContent.style.display = 'flex';
+        avatarContent.style.alignItems = 'center';
+        avatarContent.style.justifyContent = 'center';
+        avatarContent.style.width = '100%';
+        avatarContent.style.height = '100%';
     }
-    checkChanges();
+}
+
+function saveGroupInfoAutomatically(data) {
+    try {
+        socket.emit('update group info', data);
+    } catch (e) {
+        console.error("Erreur enregistrement groupe:", e);
+        alert("L'image est trop lourde pour être enregistrée.");
+    }
 }
 
 function checkChanges() {
@@ -141,10 +158,10 @@ function checkChanges() {
     
     // On n'enregistre que si le nom n'est pas vide
     if (newData.name && (newData.name !== currentGroupData.name || newData.description !== currentGroupData.description)) {
-        socket.emit('update group info', newData);
-        // On met à jour localement pour éviter les boucles d'envoi si le serveur renvoie l'info
+        saveGroupInfoAutomatically(newData);
         currentGroupData.name = newData.name;
         currentGroupData.description = newData.description;
+        updatePreview();
     }
 }
 
@@ -178,18 +195,22 @@ btnDeletePhoto.addEventListener('click', () => {
     if (confirm("Supprimer l'image du groupe ?")) {
         currentGroupData.image = null;
         updatePreview();
-        socket.emit('update group info', { image: null });
+        saveGroupInfoAutomatically({ image: null });
     }
 });
 
 function handleFileSelect(e) {
     const file = e.target.files[0];
     if (file) {
+        if (file.size > 5 * 1024 * 1024) {
+            alert('L\'image est trop grande (max 5Mo)');
+            return;
+        }
         const reader = new FileReader();
         reader.onload = (ev) => {
             currentGroupData.image = ev.target.result;
             updatePreview();
-            socket.emit('update group info', { image: currentGroupData.image });
+            saveGroupInfoAutomatically({ image: currentGroupData.image });
         };
         reader.readAsDataURL(file);
     }
