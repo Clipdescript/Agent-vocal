@@ -46,6 +46,9 @@ if (profileBtn) {
 
 const descInput = document.getElementById('group-desc-input');
 const imageInput = document.getElementById('image-input');
+const saveBtn = document.getElementById('group-save');
+const saveText = document.getElementById('save-text');
+const saveLoader = document.getElementById('save-loader');
 const deleteChatBtn = document.getElementById('delete-chat-btn');
 const confirmModal = document.getElementById('confirm-modal');
 const modalYes = document.getElementById('modal-yes');
@@ -130,8 +133,9 @@ function updatePreview() {
         avatarContent.style.backgroundColor = 'transparent';
     } else {
         avatarContent.innerHTML = "";
-        avatarContent.textContent = (currentGroupData.name.charAt(0) || "G").toUpperCase();
-        avatarContent.style.backgroundColor = getColorForUser(currentGroupData.name);
+        const nameForAvatar = nameInput.value.trim() || currentGroupData.name || "G";
+        avatarContent.textContent = nameForAvatar.charAt(0).toUpperCase();
+        avatarContent.style.backgroundColor = getColorForUser(nameForAvatar);
         avatarContent.style.color = 'white';
         avatarContent.style.display = 'flex';
         avatarContent.style.alignItems = 'center';
@@ -139,6 +143,7 @@ function updatePreview() {
         avatarContent.style.width = '100%';
         avatarContent.style.height = '100%';
     }
+    checkChanges();
 }
 
 function saveGroupInfoAutomatically(data) {
@@ -151,21 +156,16 @@ function saveGroupInfoAutomatically(data) {
 }
 
 function checkChanges() {
-    const newData = {
-        name: nameInput.value.trim(),
-        description: descInput.value.trim()
-    };
+    const newName = nameInput.value.trim();
+    const newDesc = descInput.value.trim();
     
-    // On n'enregistre que si le nom n'est pas vide
-    if (newData.name && (newData.name !== currentGroupData.name || newData.description !== currentGroupData.description)) {
-        saveGroupInfoAutomatically(newData);
-        currentGroupData.name = newData.name;
-        currentGroupData.description = newData.description;
-        updatePreview();
-    }
+    const hasChanges = (newName && newName !== currentGroupData.name) || (newDesc !== currentGroupData.description);
+    
+    saveBtn.disabled = !hasChanges;
+    saveBtn.classList.toggle('disabled', !hasChanges);
 }
 
-nameInput.addEventListener('input', checkChanges);
+nameInput.addEventListener('input', updatePreview);
 descInput.addEventListener('input', checkChanges);
 
 function openBottomSheet() {
@@ -218,6 +218,34 @@ function handleFileSelect(e) {
 
 imageInput.addEventListener('change', handleFileSelect);
 cameraInput.addEventListener('change', handleFileSelect);
+
+saveBtn.addEventListener('click', () => {
+    const newName = nameInput.value.trim();
+    const newDesc = descInput.value.trim();
+    if (!newName) return;
+
+    // Animation identique au profil
+    saveBtn.disabled = true;
+    saveBtn.classList.add('disabled');
+    saveText.textContent = "Enregistrement...";
+    saveLoader.style.display = "inline-block";
+
+    setTimeout(() => {
+        const data = { name: newName, description: newDesc };
+        socket.emit('update group info', data);
+        
+        currentGroupData.name = newName;
+        currentGroupData.description = newDesc;
+        
+        saveLoader.style.display = "none";
+        saveText.textContent = "Enregistré";
+        
+        setTimeout(() => {
+            saveText.textContent = "Enregistrer les modifications";
+            updatePreview();
+        }, 2000);
+    }, 1500);
+});
 
 backBtn.addEventListener('click', () => {
     window.location.href = '/Groupe.html';
