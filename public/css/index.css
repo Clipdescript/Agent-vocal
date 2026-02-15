@@ -38,7 +38,7 @@ header {
     color: #555;
 }
 .chat-info { flex: 1; min-width: 0; }
-.chat-name { font-weight: bold; font-size: 16px; margin-bottom: 4px; }
+.chat-name { font-weight: normal; font-size: 18px; margin-bottom: 4px; color: #075e54; }
 .chat-last-msg { font-size: 14px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Overlay Pseudo */

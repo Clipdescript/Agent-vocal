@@ -55,5 +55,5 @@ usernameSubmit.addEventListener('click', () => {
 });
 
 document.getElementById('profile-btn').addEventListener('click', () => {
-    window.location.href = '/Profil.html';
+    window.location.href = '/profil.html';
 });
