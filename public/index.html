@@ -3,20 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Messagerie Instantanée</title>
+    <title>Messagerie instantanée</title>
     <link rel="icon" type="image/png" href="/favicon.png">
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/index.css">
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
-    <!-- Visualiseur d'image plein écran -->
-    <div id="image-viewer">
-        <span id="viewer-close">&times;</span>
-        <img id="viewer-content" src="" alt="Zoom">
-    </div>
+    <header>
+        <span class="header-title">Discussion</span>
+        <button id="profile-btn" title="Mon Profil"><div id="profile-avatar"></div></button>
+    </header>
+
+    <main id="chat-list">
+        <a href="/Groupe.html" class="chat-item">
+            <div class="chat-avatar">💬</div>
+            <div class="chat-info">
+                <div class="chat-name">Général</div>
+                <div class="chat-last-msg">Bienvenue dans le groupe général !</div>
+            </div>
+        </a>
+    </main>
 
     <!-- Choix du Pseudo -->
-    <div id="username-overlay">
+    <div id="username-overlay" style="display: none;">
         <div id="username-box">
             <h2>Bienvenue !</h2>
             <p>Choisis un pseudo pour commencer :</p>
@@ -25,67 +34,7 @@
         </div>
     </div>
 
-    <header>
-        <div class="header-left">
-            <button id="back-btn" class="header-icon-btn"><i data-lucide="chevron-left"></i></button>
-            <div class="header-group-avatar">💬</div>
-            <span class="logo">Général</span>
-        </div>
-        <div class="header-buttons">
-            <button id="visio-btn" title="Appel Vidéo"><i data-lucide="video"></i></button>
-            <button id="profile-btn" title="Mon Profil"><div id="profile-avatar"></div></button>
-            <button id="clear-btn" title="Effacer"><i data-lucide="trash-2"></i></button>
-        </div>
-    </header>
-
-    <ul id="messages"></ul>
-    
-    <div id="typing-indicator"></div>
-
-    <form id="form">
-        <!-- Aperçu de l'image avant envoi -->
-        <div id="image-preview-container">
-            <img id="image-preview" src="" alt="Preview">
-            <button id="remove-image-btn" type="button">&times;</button>
-        </div>
-        
-        <div id="form-inner">
-            <div id="input-container">
-                <input id="input" autocomplete="off" placeholder="Écrire un message..." />
-            </div>
-            <button id="img-btn" type="button" class="action-circle-btn"><i data-lucide="camera"></i></button>
-            <button id="mic-btn" type="button" class="action-circle-btn"><i data-lucide="mic"></i></button>
-
-            <div id="recording-container" style="display: none;">
-                <button id="delete-rec-btn" type="button" class="rec-action-btn"><i data-lucide="trash-2"></i></button>
-                <div id="recording-info">
-                    <span id="recording-timer">0:00</span>
-                    <div id="waveform">
-                        <!-- Les barres seront générées ici dynamiquement -->
-                    </div>
-                </div>
-                <button id="stop-rec-btn" type="button" class="rec-action-btn pulse"><i data-lucide="pause"></i></button>
-                <button id="send-rec-btn" type="button" class="rec-action-btn send-btn"><i data-lucide="send"></i></button>
-            </div>
-            
-        </div>
-    </form>
-
-    <!-- Modal de confirmation -->
-    <div id="confirm-modal" class="modal-overlay">
-        <div class="modal-box">
-            <h3>Supprimer l'historique ?</h3>
-            <p>Cette action est irréversible pour votre affichage local.</p>
-            <div class="modal-buttons">
-                <button id="modal-no" class="btn-secondary">Annuler</button>
-                <button id="modal-yes" class="btn-danger">Confirmer</button>
-            </div>
-        </div>
-    </div>
-
-    <input type="file" id="message-image-input" accept="image/*" style="display: none;">
-
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/js/script.js"></script>
+    <script src="/js/index.js"></script>
 </body>
 </html>

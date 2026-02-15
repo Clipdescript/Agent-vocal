@@ -229,15 +229,23 @@ if (SpeechRecognition) {
 }
 
 // User Profile & Storage
-const overlay = document.getElementById('username-overlay');
-const usernameInput = document.getElementById('username-input');
-const usernameSubmit = document.getElementById('username-submit');
 const profileAvatar = document.getElementById('profile-avatar');
+const backBtn = document.getElementById('back-btn');
 
 let currentUsername = localStorage.getItem('chat-username');
 let userImage = localStorage.getItem('chat-user-image');
 let userId = localStorage.getItem('chat-user-id') || 'user_' + Math.random().toString(36).substr(2, 9);
 localStorage.setItem('chat-user-id', userId);
+
+if (!currentUsername) {
+    window.location.href = '/index.html';
+}
+
+if (backBtn) {
+    backBtn.addEventListener('click', () => {
+        window.location.href = '/index.html';
+    });
+}
 
 const softColors = [
     '#3498db', '#2ecc71', '#e74c3c', '#9b59b6', '#1abc9c', 
@@ -265,21 +273,8 @@ function updateHeaderAvatar() {
     }
 }
 
-if (currentUsername) {
-    overlay.style.display = 'none';
-    updateHeaderAvatar();
-}
+updateHeaderAvatar();
 
-usernameSubmit.addEventListener('click', () => {
-    const name = usernameInput.value.trim();
-    if (name) {
-        currentUsername = name;
-        localStorage.setItem('chat-username', name);
-        overlay.style.display = 'none';
-        updateHeaderAvatar();
-        socket.emit('update profile', { username: currentUsername, userId: userId });
-    }
-});
 
 // Typing Indicator logic
 let typingTimeout;
