@@ -22,7 +22,7 @@ if ("Notification" in window) {
 // Listen for messages from Service Worker (Quick Reply)
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data && event.type === 'REPLY_MSG' || event.data.type === 'REPLY_MSG') {
+        if (event.data && (event.type === 'REPLY_MSG' || event.data.type === 'REPLY_MSG')) {
             const replyText = event.data.text;
             if (replyText && currentUsername) {
                 const now = new Date();
@@ -291,8 +291,7 @@ const backBtn = document.getElementById('back-btn');
 
 let currentUsername = localStorage.getItem('chat-username');
 let userImage = localStorage.getItem('chat-user-image');
-let userId = localStorage.getItem('chat-user-id') || 'user_' + Math.random().toString(36).substr(2, 9);
-localStorage.setItem('chat-user-id', userId);
+let userId = getUserId();
 
 if (!currentUsername) {
     window.location.href = '/index.html';
@@ -338,20 +337,6 @@ if (savedGroupInfo) {
 
 socket.on('group info', updateGroupHeaderUI);
 socket.on('group info updated', updateGroupHeaderUI);
-
-const softColors = [
-    '#3498db', '#2ecc71', '#e74c3c', '#9b59b6', '#1abc9c', 
-    '#e67e22', '#3f51b5', '#e91e63', '#00bcd4', '#27ae60', 
-    '#2980b9', '#8e44ad', '#d35400', '#c0392b', '#16a085'
-];
-function getColorForUser(username) {
-    if (!username) return softColors[0];
-    let hash = 0;
-    for (let i = 0; i < username.length; i++) {
-        hash = username.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return softColors[Math.abs(hash) % softColors.length];
-}
 
 function updateHeaderAvatar() {
     if (!currentUsername) return;
@@ -465,13 +450,19 @@ const removeImgBtn = document.getElementById('remove-image-btn');
 let selectedImage = null;
 
 imgBtn.addEventListener('click', () => messageImageInput.click());
-messageImageInput.addEventListener('change', (e) => {
+messageImageInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (file) {
+        if (file.size > 10 * 1024 * 1024) {
+            alert('Image trop volumineuse (max 10MB)');
+            return;
+        }
+        
         const reader = new FileReader();
-        reader.onload = (ev) => {
-            selectedImage = ev.target.result;
-            previewImg.src = selectedImage;
+        reader.onload = async (ev) => {
+            const compressed = await MediaOptimizer.optimizeMedia(ev.target.result, 'image');
+            selectedImage = compressed;
+            previewImg.src = compressed;
             previewContainer.style.display = 'block';
         };
         reader.readAsDataURL(file);
@@ -779,10 +770,11 @@ function showAllReactions(msgId, messageElement) {
 }
 
 function hideContextMenu() {
-    if (!contextMenu.classList.contains('active') && !reactionsDetailMenu.classList.contains('active')) return;
+    if (!contextMenu.classList.contains('active') && !reactionsDetailMenu.classList.contains('active') && !shareMenu.classList.contains('active')) return;
     
     contextMenu.classList.add('closing');
     reactionsDetailMenu.classList.add('closing');
+    shareMenu.classList.add('closing');
     messageOverlay.classList.add('closing');
     
     if (highlightedMessage) {
@@ -795,6 +787,8 @@ function hideContextMenu() {
         contextMenu.classList.remove('active', 'closing');
         reactionsDetailMenu.style.display = 'none';
         reactionsDetailMenu.classList.remove('active', 'closing');
+        shareMenu.style.display = 'none';
+        shareMenu.classList.remove('active', 'closing');
         messageOverlay.style.display = 'none';
         messageOverlay.classList.remove('closing');
         highlightedMessage = null;
@@ -904,6 +898,77 @@ document.getElementById('menu-reply')?.addEventListener('click', () => {
         openReplyPreview(username, text, selectedMessageId);
     }
     hideContextMenu();
+});
+
+const shareMenu = document.getElementById('share-menu');
+
+document.getElementById('menu-share')?.addEventListener('click', (e) => {
+    e.stopPropagation(); // Empêche la fermeture immédiate
+    const messageLi = Array.from(messages.querySelectorAll('li')).find(li => li.dataset.timestamp == selectedMessageId);
+    if (messageLi) {
+        const textElem = messageLi.querySelector('.text');
+        const hasImage = !!messageLi.querySelector('.message-img');
+        const hasAudio = !!messageLi.querySelector('.audio-message');
+        
+        let shareText = "";
+        if (textElem) {
+            shareText = textElem.textContent;
+        } else if (hasImage) {
+            shareText = "Image partagée";
+        } else if (hasAudio) {
+            shareText = "Message vocal";
+        }
+
+        const shareUrl = window.location.href;
+        const fullMessage = `${shareText}\n\nVia: ${shareUrl}`;
+
+        // Nettoyer l'état visuel du message mis en évidence
+        if (highlightedMessage) {
+            highlightedMessage.classList.remove('highlighted');
+            highlightedMessage.style.transform = '';
+        }
+        messageOverlay.style.display = 'none';
+        messageOverlay.classList.remove('closing');
+
+        // Afficher la popup de partage personnalisée
+        contextMenu.style.display = 'none';
+        contextMenu.classList.remove('active');
+        
+        shareMenu.style.display = 'flex';
+        shareMenu.classList.add('active');
+        
+        // Empêcher les clics dans la popup de se propager aux gestionnaires globaux
+        shareMenu.querySelector('.modal-box').onclick = (ev) => ev.stopPropagation();
+        shareMenu.onclick = (ev) => ev.stopPropagation(); // Empêche aussi la fermeture par l'overlay
+        
+        document.getElementById('close-share-btn').onclick = (ev) => {
+            ev.stopPropagation();
+            shareMenu.style.display = 'none';
+            shareMenu.classList.remove('active');
+        };
+
+        // Setup actions
+        document.getElementById('share-sms').onclick = (ev) => {
+            ev.stopPropagation();
+            window.location.href = `sms:?body=${encodeURIComponent(fullMessage)}`;
+            shareMenu.style.display = 'none';
+            shareMenu.classList.remove('active');
+        };
+        document.getElementById('share-mail').onclick = (ev) => {
+            ev.stopPropagation();
+            window.location.href = `mailto:?subject=Message de Chat&body=${encodeURIComponent(fullMessage)}`;
+            shareMenu.style.display = 'none';
+            shareMenu.classList.remove('active');
+        };
+        document.getElementById('share-copy-link').onclick = (ev) => {
+            ev.stopPropagation();
+            navigator.clipboard.writeText(fullMessage).then(() => {
+                showToast("Lien et texte copiés !");
+            });
+            shareMenu.style.display = 'none';
+            shareMenu.classList.remove('active');
+        };
+    }
 });
 
 document.getElementById('menu-copy')?.addEventListener('click', () => {
@@ -1064,6 +1129,7 @@ function renderMessage(msg, shouldScroll = true) {
         if (msg.audio) {
             const audioWrapper = document.createElement('div');
             audioWrapper.className = 'audio-message';
+            audioWrapper.style.width = '350px'; // Forcer la largeur en JS
             
             const playBtn = document.createElement('button');
             playBtn.className = 'audio-play-btn';

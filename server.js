@@ -4,27 +4,50 @@ const { Server } = require('socket.io');
 const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
+const compression = require('compression');
 
 const app = express();
 
-// Middleware de logging
+// Force garbage collection périodique (toutes les 5 minutes)
+if (global.gc) {
+    setInterval(() => {
+        global.gc();
+        console.log('Garbage collection forcé');
+    }, 5 * 60 * 1000);
+}
+
+// Compression GZIP pour toutes les réponses
+app.use(compression({
+    level: 6,
+    threshold: 1024,
+    filter: (req, res) => {
+        if (req.headers['x-no-compression']) return false;
+        return compression.filter(req, res);
+    }
+}));
+
+// Middleware de logging minimal (réduit la mémoire)
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    if (req.url !== '/health') {
+        console.log(`${req.method} ${req.url}`);
+    }
     next();
 });
 
 app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ limit: '2mb', extended: true }));
 
 const server = http.createServer(app);
 const io = new Server(server, {
-    maxHttpBufferSize: 5e7,
+    maxHttpBufferSize: 2e6,
     cors: {
         origin: "*",
         methods: ["GET", "POST"]
     },
-    allowEIO3: true
+    pingTimeout: 60000,
+    pingInterval: 25000,
+    transports: ['websocket', 'polling']
 });
 
 // Servir les fichiers statiques
@@ -35,8 +58,15 @@ app.get('/health', (req, res) => {
     res.send('OK');
 });
 
-// Initialisation de la base de données
+// Initialisation de la base de données avec optimisations
 const db = new sqlite3.Database('./database.sqlite');
+
+// Optimisations SQLite pour performance et mémoire
+db.run('PRAGMA journal_mode = WAL');
+db.run('PRAGMA synchronous = NORMAL');
+db.run('PRAGMA cache_size = 1000');
+db.run('PRAGMA temp_store = MEMORY');
+db.run('PRAGMA mmap_size = 30000000');
 
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS messages (
@@ -59,6 +89,10 @@ db.serialize(() => {
         reactions TEXT,
         replyTo TEXT
     )`);
+
+    // Index critiques pour performance
+    db.run('CREATE INDEX IF NOT EXISTS idx_timestamp ON messages(timestamp DESC)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_userId ON messages(userId)');
 
     db.run(`CREATE TABLE IF NOT EXISTS group_info (
         id INTEGER PRIMARY KEY,
@@ -93,12 +127,37 @@ db.serialize(() => {
     });
 });
 
+// Nettoyage automatique : messages > 7 jours OU garde max 200 messages
+function cleanOldMessages() {
+    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    
+    db.get("SELECT COUNT(*) as count FROM messages", (err, row) => {
+        if (!err && row) {
+            if (row.count > 200) {
+                db.run(`DELETE FROM messages WHERE timestamp < ? OR timestamp NOT IN (
+                    SELECT timestamp FROM messages ORDER BY timestamp DESC LIMIT 200
+                )`, [sevenDaysAgo], (err) => {
+                    if (!err) {
+                        db.run('VACUUM');
+                        console.log('Nettoyage DB effectué');
+                    }
+                });
+            }
+        }
+    });
+}
+
+// Nettoyer toutes les heures
+setInterval(cleanOldMessages, 60 * 60 * 1000);
+cleanOldMessages();
+
 io.on('connection', (socket) => {
     console.log('Un utilisateur s\'est connecté');
 
-    db.all("SELECT * FROM messages ORDER BY timestamp ASC", (err, rows) => {
+    // Charger seulement les 100 derniers messages pour économiser la mémoire
+    db.all("SELECT * FROM messages ORDER BY timestamp DESC LIMIT 100", (err, rows) => {
         if (!err) {
-            socket.emit('load history', rows);
+            socket.emit('load history', rows.reverse());
         }
     });
 

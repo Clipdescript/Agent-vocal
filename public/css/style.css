@@ -284,21 +284,6 @@ header {
 .action-circle-btn:hover { background: #e0e2e5; transform: scale(1.05); }
 .action-circle-btn .lucide { width: 22px; height: 22px; }
 
-.action-circle-btn {
-    background: #f0f2f5;
-    border: none;
-    color: #555;
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    flex-shrink: 0;
-}
-.action-circle-btn .lucide { width: 22px; height: 22px; }
-
 #input-container {
     background: #f0f2f5; border-radius: 25px; padding: 0 20px;
     flex: 1; display: flex; align-items: center; gap: 8px;
@@ -317,8 +302,8 @@ header {
 /* Recording Interface */
 #recording-container {
     flex: 1;
-    min-width: 0;
-    height: 45px; /* Hauteur fixe pour correspondre à la barre de texte */
+    min-width: 320px; /* Aligné sur la largeur du message final */
+    height: 45px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -405,9 +390,14 @@ header {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 8px; /* Ajout de padding interne pour ne pas coller aux bords de la bulle */
-    min-width: 160px;
+    padding: 6px 8px;
+    width: 350px !important;
 }
+
+#messages li .message-main:has(.audio-message) {
+    max-width: 90%; /* Autorise une bulle plus large pour l'audio */
+}
+
 
 .audio-play-btn {
     background: none;
@@ -454,7 +444,7 @@ header {
     gap: 3px;
     flex-grow: 1;
     height: 30px;
-    overflow: hidden;
+    min-width: 250px;
 }
 
 .static-wave-bar {
@@ -492,6 +482,21 @@ header {
     background: white; padding: 25px; border-radius: 20px; width: 90%; max-width: 380px; text-align: center;
     box-shadow: 0 10px 25px rgba(0,0,0,0.2);
 }
+.close-circle-btn {
+    background: #f0f2f5;
+    border: none;
+    color: #666;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.close-circle-btn:hover { background: #e0e2e5; }
+.close-circle-btn .lucide { width: 18px; height: 18px; }
 .modal-box h3 { margin-bottom: 10px; font-size: 20px; }
 .modal-box p { color: #666; font-size: 15px; margin-bottom: 20px; }
 .modal-buttons { display: flex; gap: 12px; }
@@ -648,7 +653,8 @@ header {
     gap: 40px;
 }
 .context-menu-list li:last-child { border-bottom: none; }
-.context-menu-list li:active { background: #f0f0f0; }
+.context-menu-list li:hover { background: #f0f2f5; }
+.context-menu-list li:active { background: #e0e2e5; }
 .context-menu-list li.danger { color: #ff3b30; }
 .context-menu-list li .lucide { width: 20px; height: 20px; opacity: 0.8; }
 .context-menu-list li.danger .lucide { color: #ff3b30; opacity: 1; }

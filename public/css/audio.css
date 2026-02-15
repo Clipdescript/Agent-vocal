@@ -1,0 +1,170 @@
+.audio-message {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    width: 100%;
+    min-width: 280px;
+    max-width: 100%;
+}
+
+#messages li .message-main:has(.audio-message) {
+    max-width: 80%;
+}
+
+.audio-play-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #555;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.audio-inner-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    overflow: hidden;
+    margin-right: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 12px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.audio-inner-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.audio-play-btn .lucide {
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
+}
+
+.audio-waveform-static {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex-grow: 1;
+    height: 30px;
+    min-width: 250px;
+}
+
+.static-wave-bar {
+    width: 3px;
+    background: #cfd8dc;
+    border-radius: 10px;
+    transition: background 0.2s ease;
+}
+
+.audio-duration-info {
+    font-size: 10px;
+    color: #666;
+    margin-top: auto;
+    padding-bottom: 2px;
+}
+
+#recording-container {
+    flex: 1;
+    min-width: 320px;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f0f2f5;
+    border-radius: 25px;
+    padding: 0 15px;
+    box-shadow: none;
+    overflow: hidden;
+}
+
+#recording-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+#waveform {
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: center;
+    gap: 3px;
+    height: 100%;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    justify-content: flex-start;
+}
+
+.wave-bar {
+    width: 3px;
+    min-height: 3px;
+    background: #90a4ae;
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+
+@keyframes waveFade {
+    0% { opacity: 1; }
+    70% { opacity: 0.8; }
+    100% { opacity: 0; }
+}
+
+#recording-container.active .wave-bar {
+    background: #90a4ae;
+}
+
+.rec-action-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    color: #667;
+    transition: color 0.2s;
+}
+
+#delete-rec-btn:hover { 
+    color: #ea4335; 
+}
+
+#stop-rec-btn { 
+    color: #ea4335; 
+    border: 2px solid #ea4335; 
+    border-radius: 50%; 
+    padding: 5px; 
+}
+
+#send-rec-btn { 
+    color: #075e54; 
+}
+
+#send-rec-btn:hover { 
+    transform: scale(1.1); 
+}
+
+.pulse {
+    animation: pulseRed 1.5s infinite;
+}
+
+@keyframes pulseRed {
+    0% { box-shadow: 0 0 0 0 rgba(234, 67, 53, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(234, 67, 53, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(234, 67, 53, 0); }
+}

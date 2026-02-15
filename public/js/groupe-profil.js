@@ -9,21 +9,6 @@ const nameInput = document.getElementById('group-name-input');
 let currentUsername = localStorage.getItem('chat-username');
 let userImage = localStorage.getItem('chat-user-image');
 
-const softColors = [
-    '#3498db', '#2ecc71', '#e74c3c', '#9b59b6', '#1abc9c', 
-    '#e67e22', '#3f51b5', '#e91e63', '#00bcd4', '#27ae60', 
-    '#2980b9', '#8e44ad', '#d35400', '#c0392b', '#16a085'
-];
-
-function getColorForUser(username) {
-    if (!username) return softColors[0];
-    let hash = 0;
-    for (let i = 0; i < username.length; i++) {
-        hash = username.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return softColors[Math.abs(hash) % softColors.length];
-}
-
 function updateHeaderAvatar() {
     if (!currentUsername) return;
     if (userImage) {
@@ -211,16 +196,16 @@ btnDeletePhoto.addEventListener('click', () => {
     }
 });
 
-function handleFileSelect(e) {
+async function handleFileSelect(e) {
     const file = e.target.files[0];
     if (file) {
-        if (file.size > 5 * 1024 * 1024) {
-            alert('L\'image est trop grande (max 5Mo)');
+        if (file.size > 10 * 1024 * 1024) {
+            alert('L\'image est trop grande (max 10Mo)');
             return;
         }
         const reader = new FileReader();
-        reader.onload = (ev) => {
-            currentGroupData.image = ev.target.result;
+        reader.onload = async (ev) => {
+            currentGroupData.image = await MediaOptimizer.optimizeMedia(ev.target.result, 'image');
             updatePreview();
             saveGroupInfoAutomatically({ image: currentGroupData.image });
         };

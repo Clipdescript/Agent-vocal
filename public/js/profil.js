@@ -23,10 +23,7 @@ const btnDeletePhoto = document.getElementById('btn-delete-photo');
 const cameraInput = document.getElementById('camera-input');
 const closeSheetBtn = document.getElementById('close-sheet');
 
-const userId = localStorage.getItem('chat-user-id') || ('user_' + Math.random().toString(36).substr(2, 9));
-if (!localStorage.getItem('chat-user-id')) localStorage.setItem('chat-user-id', userId);
-
-// Récupérer le userId de l'URL s'il existe
+const userId = getUserId();
 const urlParams = new URLSearchParams(window.location.search);
 const viewUserId = urlParams.get('userId');
 const isViewOnly = viewUserId && viewUserId !== userId;
@@ -48,7 +45,6 @@ const displayStatus = document.getElementById('display-status');
 const saveSection = document.querySelector('.save-section');
 
 if (isViewOnly) {
-    // Mode Vue Uniquement
     headerTitle.textContent = "Profil";
     modifierText.style.display = "none";
     cameraOverlay.style.display = "none";
@@ -57,17 +53,14 @@ if (isViewOnly) {
     groupInputPseudo.style.display = "none";
     groupPseudo.style.display = "block";
     
-    // Désactiver les inputs et montrer les textes
     profileInfoInput.style.display = "none";
     profileStatusInput.style.display = "none";
     displayBio.style.display = "block";
     displayStatus.style.display = "block";
     
-    // Retirer la classe cliquable de l'avatar
     profileAvatarBig.classList.remove('clickable-avatar');
     profileAvatarBig.style.cursor = "default";
 
-    // Charger les données de l'utilisateur depuis le serveur
     socket.emit('get user profile', viewUserId);
 }
 
@@ -84,22 +77,6 @@ socket.on('user profile data', (data) => {
         window.location.href = "/";
     }
 });
-
-const softColors = [
-    '#3498db', '#2ecc71', '#e74c3c', '#9b59b6', '#1abc9c', 
-    '#e67e22', '#3f51b5', '#e91e63', '#00bcd4', '#27ae60', 
-    '#2980b9', '#8e44ad', '#d35400', '#c0392b', '#16a085'
-];
-
-function getColorForUser(username) {
-    if (!username) return softColors[0];
-    let hash = 0;
-    for (let i = 0; i < username.length; i++) {
-        hash = username.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const index = Math.abs(hash) % softColors.length;
-    return softColors[index];
-}
 
 function updatePreview() {
     const nameToUse = isViewOnly ? currentUsername : (profileInput.value.trim() || currentUsername);
@@ -231,16 +208,16 @@ socket.on('profile updated', (data) => {
     }
 });
 
-function handleImageSelect(e) {
+async function handleImageSelect(e) {
     const file = e.target.files[0];
     if (file) {
-        if (file.size > 5 * 1024 * 1024) { // Limite 5Mo
-            alert('L\'image est trop grande (max 5Mo)');
+        if (file.size > 10 * 1024 * 1024) {
+            alert('L\'image est trop grande (max 10Mo)');
             return;
         }
         const reader = new FileReader();
-        reader.onload = (event) => {
-            userImage = event.target.result;
+        reader.onload = async (event) => {
+            userImage = await MediaOptimizer.optimizeMedia(event.target.result, 'image');
             updatePreview();
             savePhotoAutomatically();
         };
