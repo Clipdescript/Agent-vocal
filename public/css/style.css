@@ -71,8 +71,6 @@ header {
 #messages li { 
     display: flex; width: 100%; margin-bottom: 2px; align-items: flex-end; gap: 8px; 
     scroll-margin-bottom: 220px;
-    content-visibility: auto;
-    contain-intrinsic-size: 0 40px;
 }
 #messages li.sent { justify-content: flex-end; }
 #messages li.received { justify-content: flex-start; }

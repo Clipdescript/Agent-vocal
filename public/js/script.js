@@ -368,75 +368,13 @@ function updateHeaderAvatar() {
 updateHeaderAvatar();
 
 
-// --- IndexedDB Management for Massive Storage ---
-const dbName = "ChatAppDB";
-const storeName = "messages";
-let db;
-
-const initDB = () => {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open(dbName, 1);
-        request.onupgradeneeded = (e) => {
-            const db = e.target.result;
-            if (!db.objectStoreNames.contains(storeName)) {
-                db.createObjectStore(storeName, { keyPath: "timestamp" });
-            }
-        };
-        request.onsuccess = (e) => {
-            db = e.target.result;
-            resolve(db);
-        };
-        request.onerror = (e) => reject(e);
-    });
-};
-
-async function saveMessageToDB(msg) {
-    if (!db) await initDB();
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction([storeName], "readwrite");
-        const store = transaction.objectStore(storeName);
-        store.put(msg);
-        transaction.oncomplete = () => resolve();
-        transaction.onerror = (e) => reject(e);
-    });
-}
-
-async function getAllMessagesFromDB() {
-    if (!db) await initDB();
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction([storeName], "readonly");
-        const store = transaction.objectStore(storeName);
-        const request = store.getAll();
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = (e) => reject(e);
-    });
-}
-
-async function clearOldMessages(expirationMs) {
-    if (!db) await initDB();
-    const now = Date.now();
-    const messages = await getAllMessagesFromDB();
-    const toDelete = messages.filter(m => (now - m.timestamp) > expirationMs);
-    
-    const transaction = db.transaction([storeName], "readwrite");
-    const store = transaction.objectStore(storeName);
-    toDelete.forEach(m => store.delete(m.timestamp));
-}
-
-// Typing Indicator logic with Debounce
+// Typing Indicator logic
 let typingTimeout;
-const sendTyping = () => {
-    socket.emit('typing', { username: currentUsername, image: userImage });
-};
-
 input.addEventListener('input', () => {
     if (currentUsername) {
-        if (!typingTimeout) sendTyping();
+        socket.emit('typing', { username: currentUsername, image: userImage });
         clearTimeout(typingTimeout);
-        typingTimeout = setTimeout(() => {
-            socket.emit('stop typing');
-            typingTimeout = null;
-        }, 2000);
+        typingTimeout = setTimeout(() => socket.emit('stop typing'), 2000);
     }
 });
 
@@ -990,9 +928,11 @@ document.getElementById('menu-delete')?.addEventListener('click', () => {
 // Message Rendering
 let lastSenderId = null;
 
-function createMessageElement(msg) {
+function renderMessage(msg, shouldScroll = true) {
     const lastClear = parseInt(localStorage.getItem('chat-last-clear') || "0");
-    if (msg.timestamp && msg.timestamp < lastClear) return null;
+    if (lastClear > Date.now()) localStorage.removeItem('chat-last-clear');
+    
+    if (msg.timestamp && msg.timestamp < lastClear) return;
 
     const isMe = msg.userId === userId;
     const isConsecutive = lastSenderId === msg.userId;
@@ -1003,6 +943,7 @@ function createMessageElement(msg) {
     if (isConsecutive) li.classList.add('consecutive');
     li.dataset.timestamp = msg.timestamp;
 
+    // Avatar
     const avatar = document.createElement('div');
     avatar.className = 'message-avatar';
     
@@ -1011,7 +952,7 @@ function createMessageElement(msg) {
         if (isMe) avatar.style.width = '0';
     } else {
         if (msg.image) {
-            avatar.innerHTML = `<img src="${msg.image}" loading="lazy">`;
+            avatar.innerHTML = `<img src="${msg.image}">`;
         } else {
             avatar.textContent = msg.username.charAt(0).toUpperCase();
             avatar.style.backgroundColor = getColorForUser(msg.username);
@@ -1023,6 +964,7 @@ function createMessageElement(msg) {
     const main = document.createElement('div');
     main.className = 'message-main';
 
+    // Menu contextuel uniquement sur la bulle du message
     let pressTimer;
     const startPress = (e) => {
         pressTimer = setTimeout(() => showContextMenu(e, msg.timestamp || Date.now(), isMe, main), 500);
@@ -1047,10 +989,16 @@ function createMessageElement(msg) {
     const content = document.createElement('div');
     content.className = 'message-content';
 
+    // Rendu de la réponse si présente
     if (msg.replyTo) {
         let replyData = msg.replyTo;
         if (typeof replyData === 'string') {
-            try { replyData = JSON.parse(replyData); } catch (e) { replyData = null; }
+            try {
+                replyData = JSON.parse(replyData);
+            } catch (e) {
+                console.error("Error parsing replyTo:", e);
+                replyData = null;
+            }
         }
 
         if (replyData) {
@@ -1079,6 +1027,7 @@ function createMessageElement(msg) {
                     setTimeout(() => target.classList.remove('highlight-animation'), 2000);
                 }
             };
+            
             content.appendChild(replyWrapper);
         }
     }
@@ -1092,6 +1041,8 @@ function createMessageElement(msg) {
             e.stopPropagation();
             window.location.href = `/profil.html?userId=${msg.userId}&from=group`;
         };
+        name.onmousedown = (e) => e.stopPropagation();
+        name.ontouchstart = (e) => e.stopPropagation();
         content.appendChild(name);
     }
 
@@ -1099,7 +1050,6 @@ function createMessageElement(msg) {
         const img = document.createElement('img');
         img.src = msg.messageImage;
         img.className = 'message-img';
-        img.loading = 'lazy';
         img.onclick = (e) => {
             e.stopPropagation();
             openLightbox(msg.messageImage);
@@ -1114,18 +1064,28 @@ function createMessageElement(msg) {
         if (msg.audio) {
             const audioWrapper = document.createElement('div');
             audioWrapper.className = 'audio-message';
+            
             const playBtn = document.createElement('button');
             playBtn.className = 'audio-play-btn';
             playBtn.innerHTML = '<i data-lucide="play"></i>';
+            
             const audioElem = new Audio(msg.audio);
+            let isPlaying = false;
             
             playBtn.onclick = () => {
                 if (audioElem.paused) {
                     audioElem.currentTime = 0;
-                    audioElem.play();
+                    audioElem.play().catch(err => {
+                        console.error("Playback error:", err);
+                        audioElem.load();
+                        setTimeout(() => {
+                            audioElem.currentTime = 0;
+                            audioElem.play();
+                        }, 100);
+                    });
                 } else {
                     audioElem.pause();
-                    audioElem.currentTime = 0;
+                    audioElem.currentTime = 0; // Reset à zéro quand on clique sur pause
                 }
             };
             
@@ -1134,24 +1094,39 @@ function createMessageElement(msg) {
                 waveContainer.classList.add('playing');
                 lucide.createIcons();
             };
+            
             audioElem.onpause = () => {
                 playBtn.innerHTML = '<i data-lucide="play"></i>';
                 waveContainer.classList.remove('playing');
-                waveContainer.querySelectorAll('.static-wave-bar').forEach(b => b.style.background = '#90a4ae');
+                // Reset visuel des barres
+                const bars = waveContainer.querySelectorAll('.static-wave-bar');
+                bars.forEach(b => b.style.background = '#90a4ae');
                 lucide.createIcons();
             };
-            audioElem.onended = audioElem.onpause;
+
+            audioElem.onended = () => {
+                audioElem.currentTime = 0;
+                playBtn.innerHTML = '<i data-lucide="play"></i>';
+                waveContainer.classList.remove('playing');
+                const bars = waveContainer.querySelectorAll('.static-wave-bar');
+                bars.forEach(b => b.style.background = '#90a4ae');
+                lucide.createIcons();
+            };
 
             const waveContainer = document.createElement('div');
             waveContainer.className = 'audio-waveform-static';
+
             audioElem.ontimeupdate = () => {
                 const progress = audioElem.currentTime / audioElem.duration;
                 if (isNaN(progress)) return;
                 const bars = waveContainer.querySelectorAll('.static-wave-bar');
                 const count = Math.floor(progress * bars.length);
-                bars.forEach((bar, i) => bar.style.background = i <= count ? '#075e54' : '#90a4ae');
+                bars.forEach((bar, i) => {
+                    bar.style.background = i <= count ? '#075e54' : '#90a4ae';
+                });
             };
             
+            // Générer les barres à partir du buffer stocké
             try {
                 const heights = JSON.parse(msg.audioWaveform || '[]');
                 heights.forEach(h => {
@@ -1160,7 +1135,7 @@ function createMessageElement(msg) {
                     b.style.height = `${Math.max(3, h)}px`;
                     waveContainer.appendChild(b);
                 });
-            } catch(e) {}
+            } catch(e) { console.error("Waveform parse error", e); }
 
             const durationInfo = document.createElement('div');
             durationInfo.className = 'audio-duration-info';
@@ -1172,8 +1147,9 @@ function createMessageElement(msg) {
             audioWrapper.appendChild(waveContainer);
             audioWrapper.appendChild(durationInfo);
             txtWrapper.appendChild(audioWrapper);
+            
             setTimeout(() => lucide.createIcons(), 0);
-        } else if (msg.isVisio) {
+        } else if (msg.isVisio == true || msg.isVisio == 1) {
             const room = msg.roomId || 'default';
             const txt = document.createElement('span');
             txt.className = 'text';
@@ -1192,32 +1168,74 @@ function createMessageElement(msg) {
     time.className = 'time';
     time.textContent = msg.time;
     content.appendChild(time);
+
     main.appendChild(content);
 
+    // Render reactions if any
     if (msg.reactions) {
-        try { updateReactionsUI(li, JSON.parse(msg.reactions), main); } catch(e) {}
+        try {
+            const reactions = JSON.parse(msg.reactions);
+            updateReactionsUI(li, reactions);
+        } catch(e) {}
     }
 
     if (!isMe) li.appendChild(avatar);
     li.appendChild(main);
-    return li;
-}
-
-function renderMessage(msg, shouldScroll = true) {
-    const li = createMessageElement(msg);
-    if (!li) return;
+    
     messages.appendChild(li);
     if (shouldScroll) {
-        setTimeout(() => li.scrollIntoView({ behavior: 'smooth', block: 'end' }), 50);
+        setTimeout(() => {
+            li.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }, 100);
     }
 }
 
 // Message Persistence & Expiration Logic
 const MSG_EXPIRATION = 24 * 60 * 60 * 1000; // 24h
+const MAX_LOCAL_MSGS = 50; // Limite pour éviter QuotaExceededError avec les images/audio
 
-socket.on('chat message', async (msg) => {
+function getLocalMessages() {
+    try {
+        const stored = localStorage.getItem('chat-messages-local');
+        return stored ? JSON.parse(stored) : [];
+    } catch(e) { return []; }
+}
+
+function saveLocalMessages(msgs) {
+    // Garder seulement les N derniers messages pour économiser de l'espace
+    if (msgs.length > MAX_LOCAL_MSGS) {
+        msgs = msgs.slice(-MAX_LOCAL_MSGS);
+    }
+    
+    try {
+        localStorage.setItem('chat-messages-local', JSON.stringify(msgs));
+    } catch(e) {
+        console.warn("LocalStorage plein, suppression de messages anciens...");
+        if (msgs.length > 5) {
+            saveLocalMessages(msgs.slice(5)); // On en enlève encore plus si ça bloque
+        }
+    }
+}
+
+function cleanAndGetMessages() {
+    const now = Date.now();
+    let msgs = getLocalMessages();
+    const filtered = msgs.filter(m => (now - m.timestamp) < MSG_EXPIRATION);
+    if (filtered.length !== msgs.length) {
+        saveLocalMessages(filtered);
+    }
+    return filtered;
+}
+
+socket.on('chat message', (msg) => {
     renderMessage(msg);
-    await saveMessageToDB(msg);
+    
+    // Save to LocalStorage
+    let msgs = getLocalMessages();
+    if (!msgs.find(m => m.timestamp === msg.timestamp)) {
+        msgs.push(msg);
+        saveLocalMessages(msgs);
+    }
     
     // Notification logic
     if (msg.userId !== userId && document.hidden) {
@@ -1239,56 +1257,41 @@ socket.on('chat message', async (msg) => {
         }
     }
 });
-
-socket.on('load history', async (history) => {
+socket.on('load history', (history) => {
     messages.innerHTML = '';
     lastSenderId = null;
     
-    const localMsgs = await getAllMessagesFromDB();
+    let localMsgs = cleanAndGetMessages();
     
+    // Merge server history with local messages (server might be empty after Render restart)
+    // We use a Map to handle duplicates by timestamp
     const mergedMap = new Map();
     localMsgs.forEach(m => mergedMap.set(m.timestamp, m));
     history.forEach(m => mergedMap.set(m.timestamp, m));
     
     const finalHistory = Array.from(mergedMap.values()).sort((a, b) => a.timestamp - b.timestamp);
     
-    // Update DB with history (batch)
-    for (const msg of history) {
-        await saveMessageToDB(msg);
-    }
+    // Update LocalStorage with merged history
+    saveLocalMessages(finalHistory);
     
-    // Optimisation : Utiliser un fragment pour un seul rendu au lieu de multiples manipulations du DOM
-    const fragment = document.createDocumentFragment();
-    finalHistory.forEach(msg => {
-        const li = createMessageElement(msg);
-        if (li) fragment.appendChild(li);
-    });
-    messages.appendChild(fragment);
+    finalHistory.forEach(msg => renderMessage(msg, false));
     
+    // Scroll to bottom after history is loaded
     setTimeout(() => {
         window.scrollTo(0, document.body.scrollHeight);
-    }, 50);
+    }, 100);
 });
 
-// Initial loading
-(async () => {
-    await initDB();
-    await clearOldMessages(24 * 60 * 60 * 1000); // 24h
-    
-    const initialMsgs = await getAllMessagesFromDB();
-    if (initialMsgs.length > 0) {
-        const fragment = document.createDocumentFragment();
-        initialMsgs.forEach(msg => {
-            const li = createMessageElement(msg);
-            if (li) fragment.appendChild(li);
-        });
-        messages.appendChild(fragment);
-        setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 100);
-    }
-})();
+// Load local messages immediately before history comes from server
+const initialMsgs = cleanAndGetMessages();
+if (initialMsgs.length > 0) {
+    initialMsgs.forEach(msg => renderMessage(msg, false));
+    setTimeout(() => {
+        window.scrollTo(0, document.body.scrollHeight);
+    }, 100);
+}
 
 socket.on('messages cleared', () => {
     messages.innerHTML = '';
-    const transaction = db.transaction([storeName], "readwrite");
-    transaction.objectStore(storeName).clear();
+    localStorage.removeItem('chat-messages-local');
 });
