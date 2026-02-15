@@ -112,12 +112,22 @@ let currentGroupData = {
     description: "Bienvenue dans le groupe général !"
 };
 
-// Charger les données actuelles du groupe
+// Charger les données de LocalStorage immédiatement si disponibles
+const savedGroup = localStorage.getItem('chat-group-info');
+if (savedGroup) {
+    currentGroupData = JSON.parse(savedGroup);
+    nameInput.value = currentGroupData.name || "Général";
+    descInput.value = currentGroupData.description || "";
+    updatePreview();
+}
+
+// Charger les données actuelles du groupe via socket
 socket.emit('get group info');
 
 socket.on('group info', (data) => {
     if (data) {
         currentGroupData = data;
+        localStorage.setItem('chat-group-info', JSON.stringify(data));
         // Remplissage forcé des valeurs des inputs
         nameInput.value = data.name || "Général";
         descInput.value = data.description || "";

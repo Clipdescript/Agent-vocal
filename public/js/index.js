@@ -61,6 +61,7 @@ const groupAvatarElem = document.getElementById('group-avatar');
 
 function updateGroupUI(data) {
     if (data) {
+        localStorage.setItem('chat-group-info', JSON.stringify(data));
         if (groupNameElem) groupNameElem.textContent = data.name;
         if (groupDescElem) groupDescElem.textContent = data.description;
         if (groupAvatarElem) {
@@ -73,6 +74,12 @@ function updateGroupUI(data) {
             }
         }
     }
+}
+
+// Load from LocalStorage immediately
+const savedGroupInfo = localStorage.getItem('chat-group-info');
+if (savedGroupInfo) {
+    updateGroupUI(JSON.parse(savedGroupInfo));
 }
 
 socket.emit('get group info');

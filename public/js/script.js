@@ -301,25 +301,31 @@ if (groupHeaderInfo) {
 }
 
 socket.emit('get group info');
-socket.on('group info', (data) => {
+
+function updateGroupHeaderUI(data) {
     if (data) {
+        localStorage.setItem('chat-group-info', JSON.stringify(data));
         const nameElem = document.getElementById('header-group-name');
         const avatarElem = document.getElementById('header-group-avatar');
         if (nameElem) nameElem.textContent = data.name;
-        if (avatarElem && data.image) {
-            avatarElem.innerHTML = `<img src="${data.image}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+        if (avatarElem) {
+            if (data.image) {
+                avatarElem.innerHTML = `<img src="${data.image}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+            } else {
+                avatarElem.innerHTML = "💬";
+            }
         }
     }
-});
+}
 
-socket.on('group info updated', (data) => {
-    const nameElem = document.getElementById('header-group-name');
-    const avatarElem = document.getElementById('header-group-avatar');
-    if (nameElem) nameElem.textContent = data.name;
-    if (avatarElem && data.image) {
-        avatarElem.innerHTML = `<img src="${data.image}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
-    }
-});
+// Load group info from LocalStorage immediately
+const savedGroupInfo = localStorage.getItem('chat-group-info');
+if (savedGroupInfo) {
+    updateGroupHeaderUI(JSON.parse(savedGroupInfo));
+}
+
+socket.on('group info', updateGroupHeaderUI);
+socket.on('group info updated', updateGroupHeaderUI);
 
 const softColors = [
     '#3498db', '#2ecc71', '#e74c3c', '#9b59b6', '#1abc9c', 
@@ -882,8 +888,39 @@ function renderMessage(msg, shouldScroll = true) {
     }
 }
 
+// Message Persistence & Expiration Logic
+const MSG_EXPIRATION = 24 * 60 * 60 * 1000; // 24h
+
+function getLocalMessages() {
+    try {
+        const stored = localStorage.getItem('chat-messages-local');
+        return stored ? JSON.parse(stored) : [];
+    } catch(e) { return []; }
+}
+
+function saveLocalMessages(msgs) {
+    localStorage.setItem('chat-messages-local', JSON.stringify(msgs));
+}
+
+function cleanAndGetMessages() {
+    const now = Date.now();
+    let msgs = getLocalMessages();
+    const filtered = msgs.filter(m => (now - m.timestamp) < MSG_EXPIRATION);
+    if (filtered.length !== msgs.length) {
+        saveLocalMessages(filtered);
+    }
+    return filtered;
+}
+
 socket.on('chat message', (msg) => {
     renderMessage(msg);
+    
+    // Save to LocalStorage
+    let msgs = getLocalMessages();
+    if (!msgs.find(m => m.timestamp === msg.timestamp)) {
+        msgs.push(msg);
+        saveLocalMessages(msgs);
+    }
     
     // Notification logic
     if (msg.userId !== userId && document.hidden) {
@@ -908,13 +945,38 @@ socket.on('chat message', (msg) => {
 socket.on('load history', (history) => {
     messages.innerHTML = '';
     lastSenderId = null;
-    history.forEach(msg => renderMessage(msg, false));
+    
+    let localMsgs = cleanAndGetMessages();
+    
+    // Merge server history with local messages (server might be empty after Render restart)
+    // We use a Map to handle duplicates by timestamp
+    const mergedMap = new Map();
+    localMsgs.forEach(m => mergedMap.set(m.timestamp, m));
+    history.forEach(m => mergedMap.set(m.timestamp, m));
+    
+    const finalHistory = Array.from(mergedMap.values()).sort((a, b) => a.timestamp - b.timestamp);
+    
+    // Update LocalStorage with merged history
+    saveLocalMessages(finalHistory);
+    
+    finalHistory.forEach(msg => renderMessage(msg, false));
     
     // Scroll to bottom after history is loaded
     setTimeout(() => {
         window.scrollTo(0, document.body.scrollHeight);
     }, 100);
 });
+
+// Load local messages immediately before history comes from server
+const initialMsgs = cleanAndGetMessages();
+if (initialMsgs.length > 0) {
+    initialMsgs.forEach(msg => renderMessage(msg, false));
+    setTimeout(() => {
+        window.scrollTo(0, document.body.scrollHeight);
+    }, 100);
+}
+
 socket.on('messages cleared', () => {
     messages.innerHTML = '';
+    localStorage.removeItem('chat-messages-local');
 });
