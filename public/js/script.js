@@ -890,6 +890,7 @@ function renderMessage(msg, shouldScroll = true) {
 
 // Message Persistence & Expiration Logic
 const MSG_EXPIRATION = 24 * 60 * 60 * 1000; // 24h
+const MAX_LOCAL_MSGS = 50; // Limite pour éviter QuotaExceededError avec les images/audio
 
 function getLocalMessages() {
     try {
@@ -899,7 +900,19 @@ function getLocalMessages() {
 }
 
 function saveLocalMessages(msgs) {
-    localStorage.setItem('chat-messages-local', JSON.stringify(msgs));
+    // Garder seulement les N derniers messages pour économiser de l'espace
+    if (msgs.length > MAX_LOCAL_MSGS) {
+        msgs = msgs.slice(-MAX_LOCAL_MSGS);
+    }
+    
+    try {
+        localStorage.setItem('chat-messages-local', JSON.stringify(msgs));
+    } catch(e) {
+        console.warn("LocalStorage plein, suppression de messages anciens...");
+        if (msgs.length > 5) {
+            saveLocalMessages(msgs.slice(5)); // On en enlève encore plus si ça bloque
+        }
+    }
 }
 
 function cleanAndGetMessages() {
