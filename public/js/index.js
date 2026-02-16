@@ -28,7 +28,7 @@ if (!currentUsername) {
     updateHeaderAvatar();
 }
 
-usernameSubmit.addEventListener('click', () => {
+function submitUsername() {
     const name = usernameInput.value.trim();
     if (name) {
         currentUsername = name;
@@ -36,6 +36,16 @@ usernameSubmit.addEventListener('click', () => {
         overlay.style.display = 'none';
         updateHeaderAvatar();
         socket.emit('update profile', { username: currentUsername, userId: userId });
+    }
+}
+
+usernameSubmit.addEventListener('click', submitUsername);
+
+// Support touche Entrée
+usernameInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        submitUsername();
     }
 });
 

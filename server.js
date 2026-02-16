@@ -270,6 +270,20 @@ io.on('connection', (socket) => {
         });
     });
 
+    socket.on('delete message', (data) => {
+        const { timestamp, userId: senderUserId } = data;
+        // Vérifier que l'utilisateur supprime son propre message
+        db.get("SELECT userId FROM messages WHERE timestamp = ?", [timestamp], (err, row) => {
+            if (!err && row && row.userId === senderUserId) {
+                db.run("DELETE FROM messages WHERE timestamp = ?", [timestamp], (err) => {
+                    if (!err) {
+                        io.emit('message deleted', { timestamp });
+                    }
+                });
+            }
+        });
+    });
+
     socket.on('clear messages', () => {
         db.run("DELETE FROM messages", (err) => {
             if (!err) {

@@ -193,6 +193,7 @@ btnDeletePhoto.addEventListener('click', () => {
         currentGroupData.image = null;
         updatePreview();
         saveGroupInfoAutomatically({ image: null });
+        closeBottomSheet();
     }
 });
 
@@ -203,6 +204,7 @@ async function handleFileSelect(e) {
             alert('L\'image est trop grande (max 10Mo)');
             return;
         }
+        closeBottomSheet(); // Fermer le menu après sélection
         const reader = new FileReader();
         reader.onload = async (ev) => {
             currentGroupData.image = await MediaOptimizer.optimizeMedia(ev.target.result, 'image');

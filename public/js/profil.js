@@ -183,6 +183,7 @@ btnDeletePhoto.addEventListener('click', () => {
     userImage = null;
     updatePreview();
     savePhotoAutomatically();
+    hideBottomSheet(); // Fermer le menu après suppression
 });
 
 socket.on('profile updated', (data) => {
@@ -215,6 +216,7 @@ async function handleImageSelect(e) {
             alert('L\'image est trop grande (max 10Mo)');
             return;
         }
+        hideBottomSheet(); // Fermer le menu après sélection
         const reader = new FileReader();
         reader.onload = async (event) => {
             userImage = await MediaOptimizer.optimizeMedia(event.target.result, 'image');

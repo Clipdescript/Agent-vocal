@@ -1,0 +1,20 @@
+{
+  "name": "Messagerie Instantanée",
+  "short_name": "Messagerie",
+  "description": "Application de messagerie instantanée en temps réel",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#075e54",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["social", "communication"],
+  "lang": "fr-FR"
+}

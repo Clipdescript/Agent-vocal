@@ -661,9 +661,9 @@ function showContextMenu(e, msgId, isMe, messageElement) {
     const deleteBtn = document.getElementById('menu-delete');
     if (deleteBtn) deleteBtn.style.display = isMe ? 'flex' : 'none';
 
-    // Cacher l'option Répondre pour ses propres messages
+    // Afficher l'option Répondre pour tous les messages
     const replyBtn = document.getElementById('menu-reply');
-    if (replyBtn) replyBtn.style.display = isMe ? 'none' : 'flex';
+    if (replyBtn) replyBtn.style.display = 'flex';
 
     // Cacher l'option Copier pour les messages vocaux
     const copyBtn = document.getElementById('menu-copy');
@@ -1002,8 +1002,23 @@ document.getElementById('menu-copy')?.addEventListener('click', () => {
 
 document.getElementById('menu-delete')?.addEventListener('click', () => {
     if (confirm("Supprimer ce message ?")) {
+        socket.emit('delete message', { timestamp: selectedMessageId, userId: userId });
         hideContextMenu();
     }
+});
+
+// Gestion de la suppression de message
+socket.on('message deleted', (data) => {
+    const { timestamp } = data;
+    // Supprimer du DOM
+    const messageLi = document.querySelector(`li[data-timestamp="${timestamp}"]`);
+    if (messageLi) {
+        messageLi.remove();
+    }
+    // Supprimer du localStorage
+    let msgs = getLocalMessages();
+    msgs = msgs.filter(m => m.timestamp !== timestamp);
+    saveLocalMessages(msgs);
 });
 
 // Message Rendering
@@ -1376,4 +1391,50 @@ if (initialMsgs.length > 0) {
 socket.on('messages cleared', () => {
     messages.innerHTML = '';
     localStorage.removeItem('chat-messages-local');
+});
+
+// === Indicateur de connexion ===
+const connectionIndicator = document.createElement('div');
+connectionIndicator.id = 'connection-indicator';
+connectionIndicator.innerHTML = '<span>Connexion...</span>';
+connectionIndicator.style.cssText = `
+    position: fixed; top: 60px; left: 50%; transform: translateX(-50%);
+    background: #ffc107; color: #333; padding: 6px 16px; border-radius: 20px;
+    font-size: 13px; z-index: 9999; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    transition: opacity 0.3s, transform 0.3s;
+`;
+document.body.appendChild(connectionIndicator);
+
+let connectionTimeout;
+
+socket.on('connect', () => {
+    clearTimeout(connectionTimeout);
+    connectionIndicator.innerHTML = '<span>Connecté</span>';
+    connectionIndicator.style.background = '#4caf50';
+    connectionIndicator.style.color = 'white';
+    connectionIndicator.style.display = 'block';
+    setTimeout(() => {
+        connectionIndicator.style.display = 'none';
+    }, 2000);
+});
+
+socket.on('disconnect', () => {
+    connectionIndicator.innerHTML = '<span>Déconnecté - Reconnexion...</span>';
+    connectionIndicator.style.background = '#f44336';
+    connectionIndicator.style.color = 'white';
+    connectionIndicator.style.display = 'block';
+});
+
+socket.on('reconnect_attempt', (attemptNumber) => {
+    connectionIndicator.innerHTML = `<span>Reconnexion... (${attemptNumber})</span>`;
+    connectionIndicator.style.background = '#ffc107';
+    connectionIndicator.style.color = '#333';
+    connectionIndicator.style.display = 'block';
+});
+
+socket.on('connect_error', () => {
+    connectionIndicator.innerHTML = '<span>Serveur indisponible</span>';
+    connectionIndicator.style.background = '#f44336';
+    connectionIndicator.style.color = 'white';
+    connectionIndicator.style.display = 'block';
 });
