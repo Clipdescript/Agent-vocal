@@ -58,7 +58,7 @@ app.get('/health', (req, res) => {
     res.send('OK');
 });
 
-// Initialisation de la base de données avec optimisations
+// Initialisation de la base de données SQLite
 const db = new sqlite3.Database('./database.sqlite');
 
 // Optimisations SQLite pour performance et mémoire
@@ -199,7 +199,7 @@ io.on('connection', (socket) => {
                     reactions = [];
                 }
 
-                // Trouver si l'utilisateur a déjà réagi
+                // Trouver si l'utilisateur a déjà réagiré
                 const index = reactions.findIndex(r => r.userId === userId);
                 if (index !== -1) {
                     if (reactions[index].emoji === emoji) {
